@@ -345,8 +345,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 541702262891773988}
-  - component: {fileID: 1813923540101899864}
   - component: {fileID: 4810837339674746574}
+  - component: {fileID: 3703625249285702107}
+  - component: {fileID: 5270785606751843132}
   m_Layer: 0
   m_Name: ReverseZ
   m_TagString: Untagged
@@ -373,20 +374,6 @@ Transform:
   - {fileID: 4892905994204132776}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1813923540101899864
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5866005100435723874}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ae847812ab042a1b737c73830b6a63f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  startPos: {x: 0, y: 0, z: 0}
-  spawnIndex: 0
 --- !u!61 &4810837339674746574
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -432,3 +419,30 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 1, y: 1.5}
   m_EdgeRadius: 0
+--- !u!114 &3703625249285702107
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5866005100435723874}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52c2e8dc6e5f478d94b446e72a384705, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &5270785606751843132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5866005100435723874}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c991bb6cbe4a0caa79e07f545cc463, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rows: 3
+  cols: 2
+  shapeMatrix: 000101010100

@@ -1,125 +1,284 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+using VnS.Utility.Singleton;
 
-public class GridManager : MonoBehaviour
+public class GridManager : Singleton<GridManager>
 {
-    public static GridManager Instance;
+    public int width = 8;
+    public int height = 8;
+    public float cellSize = 1f;
 
-    [Header("Grid Ayarları")]
-    public int gridWidth = 8;
-    public int gridHeight = 8;
-    public float cellSize = 0.5f;
-    public Vector2 gridOrigin = new Vector2(-2, 0);
+    bool[,] grid;
+    GameObject[,] visuals;
 
-    [Header("Spawn Ayarları")]
-    public Transform[] spawnPoints;
-    public GameObject[] blockPrefabs;
-    public float previewScale = 0.5f;
-
-    public bool[,] gridOccupied;
-    private GameObject[,] gridObjects; // Patlatırken silmek için objeleri tutar
-
-    private void Awake()
+    protected override void Awake()
     {
-        Instance = this;
-        gridOccupied = new bool[gridWidth, gridHeight];
-        gridObjects = new GameObject[gridWidth, gridHeight];
+        base.Awake();
+        grid = new bool[width, height];
+        visuals = new GameObject[width, height];
     }
-
-    private void Start() => SpawnInitialBlocks();
-
-    void SpawnInitialBlocks()
+    public bool CanFitAnywhere(BlockShape shape)
     {
-        for (int i = 0; i < spawnPoints.Length; i++) SpawnNewBlock(i);
-    }
-
-    [Header("Spawn Takibi")]
-    private List<int> currentActivePrefabIndices = new List<int>() { -1, -1, -1 }; // 3 slot için prefab indexlerini tutar
-
-    public void SpawnNewBlock(int index)
-    {
-        // Uygun olan prefabların indexlerini belirle (diğer 2 slotta olmayanlar)
-        List<int> availableIndices = new List<int>();
-        for (int i = 0; i < blockPrefabs.Length; i++)
+        for (int x = 0; x < width; x++)
         {
-            // Eğer bu prefab indexi şu an diğer spawn noktalarında yoksa listeye ekle
-            bool isAlreadyActive = false;
-            for (int j = 0; j < currentActivePrefabIndices.Count; j++)
+            for (int y = 0; y < height; y++)
             {
-                if (j != index && currentActivePrefabIndices[j] == i) 
+                if (CanPlace(shape, x, y))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool CanPlace(BlockShape shape, int startX, int startY)
+    {
+        for (int x = 0; x < shape.Width; x++)
+        {
+            for (int y = 0; y < shape.Height; y++)
+            {
+                if (!shape.cells[x, y]) continue;
+
+                int gx = startX + x;
+                int gy = startY + y;
+
+                if (gx < 0 || gy < 0 || gx >= width || gy >= height)
+                    return false;
+
+                if (grid[gx, gy])
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    public Vector2Int WorldToCell(Vector3 worldPos)
+    {
+        Vector3 local =
+            worldPos - transform.position;
+
+        int x = Mathf.FloorToInt(local.x / cellSize);
+        int y = Mathf.FloorToInt(local.y / cellSize);
+
+        return new Vector2Int(x, y);
+    }
+    
+    List<int> GetFullRows()
+    {
+        List<int> rows = new();
+
+        for (int y = 0; y < height; y++)
+        {
+            bool full = true;
+
+            for (int x = 0; x < width; x++)
+            {
+                if (!grid[x, y])
                 {
-                    isAlreadyActive = true;
+                    full = false;
                     break;
                 }
             }
-            if (!isAlreadyActive) availableIndices.Add(i);
+
+            if (full)
+                rows.Add(y);
         }
 
-        // Eğer tüm prefablar kullanımdaysa (az prefabınız varsa), mecburen rastgele seç
-        int selectedPrefabIndex;
-        if (availableIndices.Count > 0)
-            selectedPrefabIndex = availableIndices[Random.Range(0, availableIndices.Count)];
-        else
-            selectedPrefabIndex = Random.Range(0, blockPrefabs.Length);
+        return rows;
+    }
 
-        // Seçilen indexi kaydet
-        currentActivePrefabIndices[index] = selectedPrefabIndex;
+    List<int> GetFullColumns()
+    {
+        List<int> cols = new();
 
-        // Bloğu oluştur
-        GameObject newBlock = Instantiate(blockPrefabs[selectedPrefabIndex], spawnPoints[index].position, Quaternion.identity);
-        newBlock.transform.localScale = Vector3.one * previewScale;
+        for (int x = 0; x < width; x++)
+        {
+            bool full = true;
+
+            for (int y = 0; y < height; y++)
+            {
+                if (!grid[x, y])
+                {
+                    full = false;
+                    break;
+                }
+            }
+
+            if (full)
+                cols.Add(x);
+        }
+
+        return cols;
+    }
+
+    void ClearRow(int row)
+    {
+        for (int x = 0; x < width; x++)
+            ClearCell(x, row);
+    }
+
+    void ClearColumn(int col)
+    {
+        for (int y = 0; y < height; y++)
+            ClearCell(col, y);
+    }
+
+    void ClearCell(int x, int y)
+    {
+        grid[x, y] = false;
+
+        if (visuals[x, y] != null)
+        {
+            CellVisualPool.Instance.Release(visuals[x, y]);
+            visuals[x, y] = null;
+        }
+    }
+
     
-        BlockController bc = newBlock.GetComponent<BlockController>();
-        bc.spawnIndex = index;
-        bc.startPos = spawnPoints[index].position;
-    }
-
-    public void AddToGrid(int x, int y, GameObject obj)
+    public void PlacePiece(BlockShape shape, int gx, int gy)
     {
-        gridOccupied[x, y] = true;
-        gridObjects[x, y] = obj;
+        for (int x = 0; x < shape.Width; x++)
+            for (int y = 0; y < shape.Height; y++)
+            {
+                if (!shape.cells[x, y]) continue;
+
+                int cx = gx + x;
+                int cy = gy + y;
+
+                grid[cx, cy] = true;
+
+                var vis = CellVisualPool.Instance.Get();
+                vis.transform.position = CellToWorld(cx, cy);
+                visuals[cx, cy] = vis;
+            }
+
+        CheckAndClearLines();
     }
-
-    public void CheckLines()
+    void CheckAndClearLines()
     {
-        List<int> rowsToClear = new List<int>();
-        List<int> colsToClear = new List<int>();
+        var rows = GetFullRows();
+        var cols = GetFullColumns();
 
-        // Satırları kontrol et
-        for (int y = 0; y < gridHeight; y++)
+        foreach (int r in rows)
+            ClearRow(r);
+
+        foreach (int c in cols)
+            ClearColumn(c);
+    }
+    
+    public Vector3 CellToWorld(int x, int y)
+    {
+        return transform.position +
+               new Vector3(
+                   (x + 0.5f) * cellSize,
+                   (y + 0.5f) * cellSize,
+                   0
+               );
+    }
+    
+    public bool GetCell(int x, int y)
+    {
+        return grid[x, y];
+    }
+    public Vector3 CellToWorldBottomLeft(Vector2Int cell)
+    {
+        return transform.position +
+               new Vector3(
+                   cell.x * cellSize,
+                   cell.y * cellSize,
+                   0
+               );
+    }
+    
+    void OnDrawGizmos()
+    {
+        if (grid == null)
+            grid = new bool[width, height];
+
+        // Grid çizgileri
+        Gizmos.color = Color.blue;
+        for (int x = 0; x <= width; x++)
         {
-            bool full = true;
-            for (int x = 0; x < gridWidth; x++) if (!gridOccupied[x, y]) full = false;
-            if (full) rowsToClear.Add(y);
+            Gizmos.DrawLine(
+                transform.position + new Vector3(x * cellSize, 0),
+                transform.position + new Vector3(x * cellSize, height * cellSize)
+            );
         }
 
-        // Sütunları kontrol et
-        for (int x = 0; x < gridWidth; x++)
+        for (int y = 0; y <= height; y++)
         {
-            bool full = true;
-            for (int y = 0; y < gridHeight; y++) if (!gridOccupied[x, y]) full = false;
-            if (full) colsToClear.Add(x);
+            Gizmos.DrawLine(
+                transform.position + new Vector3(0, y * cellSize),
+                transform.position + new Vector3(width * cellSize, y * cellSize)
+            );
         }
 
-        // Patlatma işlemi
-        foreach (int y in rowsToClear) ClearRow(y);
-        foreach (int x in colsToClear) ClearColumn(x);
-    }
+        // DOLU hücreler
+        Gizmos.color = new Color(0, 1, 0, 0.35f);
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (!grid[x, y]) continue;
 
-    void ClearRow(int y)
-    {
-        for (int x = 0; x < gridWidth; x++) DeleteNode(x, y);
-    }
+                Vector3 center = transform.position +
+                                 new Vector3(
+                                     (x + 0.5f) * cellSize,
+                                     (y + 0.5f) * cellSize,
+                                     0
+                                 );
 
-    void ClearColumn(int x)
-    {
-        for (int y = 0; y < gridHeight; y++) DeleteNode(x, y);
+                Gizmos.DrawCube(center, Vector3.one * cellSize);
+            }
+        }
     }
+    
 
-    void DeleteNode(int x, int y)
+
+}
+
+[CustomEditor(typeof(GridManager))]
+public class GridManagerEditor : Editor
+{
+    const int CELL_SIZE = 18;
+
+    public override void OnInspectorGUI()
     {
-        if (gridObjects[x, y] != null) Destroy(gridObjects[x, y]);
-        gridOccupied[x, y] = false;
-        gridObjects[x, y] = null;
+        DrawDefaultInspector();
+
+        GridManager grid = (GridManager)target;
+
+        GUILayout.Space(10);
+        GUILayout.Label("Grid Debug View", EditorStyles.boldLabel);
+
+        if (!Application.isPlaying)
+        {
+            EditorGUILayout.HelpBox(
+                "Grid data play mode'da görünür",
+                MessageType.Info
+            );
+            return;
+        }
+
+        for (int y = grid.height - 1; y >= 0; y--)
+        {
+            EditorGUILayout.BeginHorizontal();
+            for (int x = 0; x < grid.width; x++)
+            {
+                bool filled = grid.GetCell(x, y);
+
+                GUI.color = filled ? Color.green : Color.gray;
+                GUILayout.Box(
+                    "",
+                    GUILayout.Width(CELL_SIZE),
+                    GUILayout.Height(CELL_SIZE)
+                );
+            }
+            EditorGUILayout.EndHorizontal();
+        }
+
+        GUI.color = Color.white;
     }
+    
 }
