@@ -4,6 +4,13 @@ using UnityEngine;
 [RequireComponent(typeof(PolygonCollider2D))]
 public class DraggableBlock : MonoBehaviour
 {
+    [Header("Scale Settings")]
+    public float slotScale = 0.5f; // Slotta dururkenki boyutu (Yarı yarıya)
+    public float dragScale = 1.0f; // Sürüklerkenki boyutu (Orijinal)
+    
+    [Header("Settings")]
+    [Tooltip("Blok parmağın ne kadar yukarısında dursun?")]
+    public float dragOffsetY = 2f; // Bu senin 'x birim' dediğin değer
     public BlockShape Shape => shape;
 
     [Header("Visual")]
@@ -27,6 +34,9 @@ public class DraggableBlock : MonoBehaviour
         shape = newShape;
         RebuildVisual();
         RebuildCollider();
+        
+        // EKLENEN SATIR: Başlangıçta slot boyutuna getir
+        transform.localScale = Vector3.one * slotScale;
     }
 
     void RebuildVisual()
@@ -75,22 +85,41 @@ public class DraggableBlock : MonoBehaviour
 
     void Update()
     {
-        if (!isDragging || shape == null) return;
+        if (shape == null) return;
 
-        // Rotate
+        // 1. ROTASYON (Herkes Dinliyor)
+        // Artık "isDragging" kontrolünden ÖNCE olduğu için,
+        // slotta duran bloklar da R'ye basınca dönecektir.
         if (Input.GetKeyDown(KeyCode.R))
         {
-            shape.RotateRight();
-            RebuildVisual();
-            RebuildCollider();
+            shape.RotateRight(); // [cite: 75]
+            RebuildVisual();     // [cite: 76]
+            RebuildCollider();   // [cite: 64]
         }
 
-        // Mouse world
+        // 2. SÜRÜKLEME KONTROLÜ
+        // Eğer bu blok şu an sürüklenmiyorsa, hareket kodlarını çalıştırma.
+        if (!isDragging) return;
+
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouse.z = 0;
-        transform.position = mouse;
 
-        Vector2Int cell = grid.WorldToCell(mouse);
+        // 2. Merkez Hesaplama (Az önce düzelttiğimiz kısım)
+        float widthOffset = ((shape.Width - 1) * grid.cellSize) / 2f;
+        float heightOffset = ((shape.Height - 1) * grid.cellSize) / 2f;
+        
+        Vector3 centerOffset = new Vector3(widthOffset, heightOffset, 0);
+
+        // 3. YUKARI KAYDIRMA VE POZİSYONLAMA
+        // Mouse - Merkez + Y_Kaydırma
+        Vector3 liftOffset = new Vector3(0, dragOffsetY, 0);
+        
+        transform.position = mouse - centerOffset + liftOffset;
+
+        // 4. Grid Kontrolleri (Değişmedi)
+        // GridManager, bloğun sol-alt köşesini referans alır, o yüzden transform.position gönderiyoruz.
+        Vector2Int cell = grid.WorldToCell(transform.position);
+        
         bool canPlace = grid.CanPlace(shape, cell.x, cell.y);
 
         if (canPlace)
@@ -98,11 +127,12 @@ public class DraggableBlock : MonoBehaviour
         else
             ghost.Clear();
 
-        // Place
+        // Place (Bırakma)
         if (Input.GetMouseButtonUp(0))
         {
             if (canPlace)
             {
+                // ... (yerleştirme kodları aynı) ...
                 grid.PlacePiece(shape, cell.x, cell.y);
                 ghost.Clear();
                 Destroy(gameObject);
@@ -112,14 +142,20 @@ public class DraggableBlock : MonoBehaviour
             {
                 ghost.Clear();
                 isDragging = false;
+                transform.localPosition = Vector3.zero;
+                
+                // EKLENEN SATIR: Yerine geri döndüğünde tekrar küçülsün
+                transform.localScale = Vector3.one * slotScale;
             }
         }
     }
-
     void OnMouseDown()
     {
         if (shape == null) return;
         isDragging = true;
+        
+        // EKLENEN SATIR: Tıklayınca orijinal boyuta büyüt
+        transform.localScale = Vector3.one * dragScale;
     }
 
     void OnDisable()
