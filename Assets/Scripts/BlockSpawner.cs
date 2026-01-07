@@ -1,22 +1,16 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+
 public class BlockSpawner : MonoBehaviour
 {
     public static BlockSpawner Instance { get; private set; }
 
-    [Header("Shapes (SO listesi)")]
-    public List<BlockShapeSO> shapes;
-
-    [Header("Block Prefab")]
+    [Header("Settings")]
+    public List<BlockShapeSO> shapes;   // Tüm olası şekiller
     public DraggableBlock blockPrefab;
+    public Transform[] slots;           // 3 adet spawn noktası
 
-    [Header("Spawn Slots (3 adet)")]
-    public Transform[] slots;
-
-    [Header("Grid")]
-    public GridManager grid;
-
-    List<DraggableBlock> activeBlocks = new();
+    private List<DraggableBlock> _activeBlocks = new();
 
     void Awake()
     {
@@ -28,65 +22,84 @@ public class BlockSpawner : MonoBehaviour
         SpawnSet();
     }
 
-    void SpawnSet()
+    private void SpawnSet()
     {
-        ClearActive();
+        ClearActiveBlocks();
 
-        for (int i = 0; i < 3; i++)
-            SpawnOne(i);
+        if (shapes.Count == 0) return;
 
+        // 1. Havuzun kopyasını oluştur (Orijinal listeyi bozmamak için)
+        List<BlockShapeSO> pool = new List<BlockShapeSO>(shapes);
+
+        // 2. Fisher-Yates Shuffle ile listeyi karıştır
+        // (Tıpkı iskambil destesini karıştırır gibi)
+        for (int i = 0; i < pool.Count; i++)
+        {
+            BlockShapeSO temp = pool[i];
+            int randomIndex = Random.Range(i, pool.Count);
+            pool[i] = pool[randomIndex];
+            pool[randomIndex] = temp;
+        }
+
+        // 3. Karıştırılmış listeden sırasıyla çek
+        for (int i = 0; i < slots.Length; i++)
+        {
+            // Eğer şekil sayın slot sayısından azsa (örn: 2 şekil var ama 3 slot var)
+            // mecburen başa döner (Modülo işlemi).
+            // Ama yeterli şeklin varsa hepsi benzersiz olur.
+            BlockShapeSO uniqueShape = pool[i % pool.Count];
+            
+            SpawnOne(i, uniqueShape);
+        }
+        
         CheckGameOver();
     }
 
-    void SpawnOne(int slotIndex)
+    // Artık şekli parametre olarak alıyor
+    private void SpawnOne(int index, BlockShapeSO shapeToSpawn)
     {
-        BlockShapeSO so =
-            shapes[Random.Range(0, shapes.Count)];
+        // Bloğu oluştur
+        DraggableBlock block = Instantiate(blockPrefab, slots[index].position, Quaternion.identity);
+        
+        // Seçilen benzersiz şekli ver
+        block.Initialize(shapeToSpawn);
 
-        BlockShape shape = new BlockShape();
-        shape.cells = so.ToMatrix();
-        shape.Trim(); // 🔴 BU SATIR KRİTİK
-
-        DraggableBlock block =
-            Instantiate(blockPrefab, slots[slotIndex].position, Quaternion.identity);
-
-        block.SetShape(shape);
-        activeBlocks.Add(block);
+        // Listeye ekle
+        _activeBlocks.Add(block);
     }
-
 
     public void OnBlockPlaced(DraggableBlock block)
     {
-        activeBlocks.Remove(block);
-        Destroy(block.gameObject);
+        _activeBlocks.Remove(block);
 
-        if (activeBlocks.Count == 0)
+        if (_activeBlocks.Count == 0)
+        {
             SpawnSet();
+        }
         else
+        {
             CheckGameOver();
+        }
     }
 
-    void CheckGameOver()
+    private void CheckGameOver()
     {
-        foreach (var block in activeBlocks)
+        foreach (var block in _activeBlocks)
         {
-            if (grid.CanFitAnywhere(block.Shape))
-                return;
+            if (GridManager.Instance.CanFitAnywhere(block.GetData())) 
+                return; 
         }
 
-        GameOver();
-    }
-
-    void GameOver()
-    {
         Debug.Log("GAME OVER");
+        GameManager.Instance.TriggerGameOver();
     }
 
-    void ClearActive()
+    private void ClearActiveBlocks()
     {
-        foreach (var b in activeBlocks)
-            Destroy(b.gameObject);
-
-        activeBlocks.Clear();
+        foreach (var b in _activeBlocks)
+        {
+            if (b != null) Destroy(b.gameObject);
+        }
+        _activeBlocks.Clear();
     }
 }

@@ -34,6 +34,13 @@ public class BlockShapeSO : ScriptableObject
 
         return matrix;
     }
+    
+    // Veri erişimi için getter
+    public bool IsActive(int x, int y)
+    {
+        if (x < 0 || x >= width || y < 0 || y >= height) return false;
+        return cells[y * width + x];
+    }
 }
 
 [CustomEditor(typeof(BlockShapeSO))]

@@ -1,24 +1,17 @@
-using UnityEngine;
-public class BlockData : MonoBehaviour
+﻿[System.Serializable]
+public class BlockData
 {
-    public BlockShapeSO shapeSO;
+    public bool[,] Matrix { get; private set; }
+    public int Width => Matrix.GetLength(0);
+    public int Height => Matrix.GetLength(1);
 
-    public BlockShape GetShape()
+    public BlockData(bool[,] matrix)
     {
-        return new BlockShape
-        {
-            cells = ToMatrix(shapeSO)
-        };
+        Matrix = matrix;
     }
 
-    bool[,] ToMatrix(BlockShapeSO so)
+    public void UpdateMatrix(bool[,] newMatrix)
     {
-        bool[,] matrix = new bool[so.width, so.height];
-
-        for (int y = 0; y < so.height; y++)
-            for (int x = 0; x < so.width; x++)
-                matrix[x, y] = so.Get(x, y);
-
-        return matrix;
+        Matrix = newMatrix;
     }
 }

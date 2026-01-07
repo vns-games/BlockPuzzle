@@ -4,45 +4,55 @@ using VnS.Utility.Singleton;
 
 public class BlockGhost : Singleton<BlockGhost>
 {
+    [Header("Settings")]
     public Transform cellsRoot;
     public GameObject cellPrefab;
 
-    List<GameObject> activeCells = new();
+    private float zOffset = -1f; // Ghost blokların altında kalsın diye
+    private List<GameObject> activeCells = new();
 
-    public void Show(BlockShape shape, Vector2Int cell, GridManager grid)
+    public void Show(BlockData data, Vector2Int cell, GridManager grid)
     {
         Clear();
-
         float s = grid.cellSize;
 
-        // Transform pozisyon = grid CellToWorld (2 parametreli)
-        Vector3 pos = grid.CellToWorld(cell.x, cell.y);
-        pos.z = 0;
-        transform.position = pos;
+        // Hedef hücrenin merkezini alıyoruz
+        Vector3 rootPos = grid.CellToWorld(cell.x, cell.y);
+        rootPos.z = zOffset; 
+        transform.position = rootPos;
 
-        for (int x = 0; x < shape.Width; x++)
-            for (int y = 0; y < shape.Height; y++)
+        for (int x = 0; x < data.Width; x++)
+        {
+            for (int y = 0; y < data.Height; y++)
             {
-                if (!shape.cells[x, y]) continue;
+                if (!data.Matrix[x, y]) continue;
 
                 GameObject c = GetCell();
                 c.transform.SetParent(cellsRoot, false);
+                // GridManager (0,0) noktasını hücrenin merkezi kabul ettiği için
+                // local pozisyonları da buna göre ayarlıyoruz.
                 c.transform.localPosition = new Vector3(x * s, y * s, 0);
             }
+        }
     }
 
     GameObject GetCell()
     {
-        GameObject c = Instantiate(cellPrefab);
-        c.SetActive(true);
+        foreach(var item in activeCells)
+        {
+            if (!item.activeSelf)
+            {
+                item.SetActive(true);
+                return item;
+            }
+        }
+        GameObject c = Instantiate(cellPrefab, cellsRoot);
         activeCells.Add(c);
         return c;
     }
 
     public void Clear()
     {
-        foreach (var c in activeCells)
-            Destroy(c);
-        activeCells.Clear();
+        foreach (var c in activeCells) c.SetActive(false);
     }
 }

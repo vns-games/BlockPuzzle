@@ -1,166 +1,191 @@
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening; // 1. DOTween Kütüphanesini ekledik
 
 [RequireComponent(typeof(PolygonCollider2D))]
 public class DraggableBlock : MonoBehaviour
 {
-    [Header("Scale Settings")]
-    public float slotScale = 0.5f; // Slotta dururkenki boyutu (Yarı yarıya)
-    public float dragScale = 1.0f; // Sürüklerkenki boyutu (Orijinal)
-    
-    [Header("Settings")]
-    [Tooltip("Blok parmağın ne kadar yukarısında dursun?")]
-    public float dragOffsetY = 2f; // Bu senin 'x birim' dediğin değer
-    public BlockShape Shape => shape;
+    // --- VERİ ---
+    private BlockData _currentData;
+    private bool _isDragging;
+    private Vector3 _startPosition;
 
+    // --- VISUAL & SETTINGS ---
     [Header("Visual")]
     public Transform visualRoot;
     public GameObject cellPrefab;
+    
+    [Header("Settings")]
+    public float slotScale = 0.6f;
+    public float dragScale = 1.0f;
+    public float dragOffsetY = 1f;
+    
+    // Coroutine hızı yerine Süre (Duration) kullanıyoruz
+    public float moveDuration = 0.3f; 
 
-    BlockShape shape;
-    PolygonCollider2D col;
-    bool isDragging;
-
-    private GridManager grid => GridManager.Instance;
-    private BlockGhost ghost => BlockGhost.Instance;
+    // --- REFS ---
+    private PolygonCollider2D _col;
+    private GridManager _grid => GridManager.Instance;
+    private BlockGhost _ghost => BlockGhost.Instance;
 
     void Awake()
     {
-        col = GetComponent<PolygonCollider2D>();
+        _col = GetComponent<PolygonCollider2D>();
     }
 
-    public void SetShape(BlockShape newShape)
+    void Start()
     {
-        shape = newShape;
+        _startPosition = transform.position;
+        transform.localScale = Vector3.one * slotScale;
+    }
+
+    public void Initialize(BlockShapeSO so)
+    {
+        var matrix = so.ToMatrix().Trim();
+        _currentData = new BlockData(matrix);
+
         RebuildVisual();
         RebuildCollider();
+    }
+    
+    public BlockData GetData() => _currentData;
+
+    // --- MERKEZLEME HESABI ---
+    private Vector3 GetCenteringOffset()
+    {
+        if (_currentData == null) return Vector3.zero;
+        float s = _grid.cellSize;
         
-        // EKLENEN SATIR: Başlangıçta slot boyutuna getir
-        transform.localScale = Vector3.one * slotScale;
+        float ox = (_currentData.Width * s) / 2f;
+        float oy = (_currentData.Height * s) / 2f;
+        
+        return new Vector3(ox, oy, 0);
     }
 
     void RebuildVisual()
     {
-        foreach (Transform c in visualRoot)
-            Destroy(c.gameObject);
+        foreach (Transform c in visualRoot) Destroy(c.gameObject);
+        if (_currentData == null) return;
 
-        float s = grid.cellSize;
+        float s = _grid.cellSize;
+        Vector3 offset = GetCenteringOffset();
+        Vector3 halfCell = new Vector3(s / 2f, s / 2f, 0);
 
-        for (int x = 0; x < shape.Width; x++)
-            for (int y = 0; y < shape.Height; y++)
+        for (int x = 0; x < _currentData.Width; x++)
+        {
+            for (int y = 0; y < _currentData.Height; y++)
             {
-                if (!shape.cells[x, y]) continue;
-
-                Vector3 pos = new Vector3(x * s, y * s, 0);
+                if (!_currentData.Matrix[x, y]) continue;
+                Vector3 pos = new Vector3(x * s, y * s, 0) + halfCell - offset;
                 Instantiate(cellPrefab, visualRoot).transform.localPosition = pos;
             }
+        }
     }
 
     void RebuildCollider()
     {
+        if (_currentData == null) return;
+        
+        _col.pathCount = 0;
         List<Vector2[]> paths = new();
-        float s = grid.cellSize;
+        float s = _grid.cellSize;
+        Vector3 offset = GetCenteringOffset();
 
-        for (int x = 0; x < shape.Width; x++)
-            for (int y = 0; y < shape.Height; y++)
+        for (int x = 0; x < _currentData.Width; x++)
+        {
+            for (int y = 0; y < _currentData.Height; y++)
             {
-                if (!shape.cells[x, y]) continue;
-
-                float px = x * s;
-                float py = y * s;
-
-                paths.Add(new Vector2[]
-                {
-                    new(px, py),
-                    new(px + s, py),
-                    new(px + s, py + s),
-                    new(px, py + s)
+                if (!_currentData.Matrix[x, y]) continue;
+                float px = (x * s) - offset.x;
+                float py = (y * s) - offset.y;
+                paths.Add(new Vector2[] {
+                    new(px, py), new(px + s, py), new(px + s, py + s), new(px, py + s)
                 });
             }
-
-        col.pathCount = paths.Count;
-        for (int i = 0; i < paths.Count; i++)
-            col.SetPath(i, paths[i]);
+        }
+        _col.pathCount = paths.Count;
+        for (int i = 0; i < paths.Count; i++) _col.SetPath(i, paths[i]);
     }
 
     void Update()
     {
-        if (shape == null) return;
+        if (_currentData == null) return;
 
-        // 1. ROTASYON (Herkes Dinliyor)
-        // Artık "isDragging" kontrolünden ÖNCE olduğu için,
-        // slotta duran bloklar da R'ye basınca dönecektir.
-        if (Input.GetKeyDown(KeyCode.R))
+        // --- 1. ROTASYON ---
+        if (Input.GetKeyDown(KeyCode.R)) // Tutmasak da dönebilir
         {
-            shape.RotateRight(); // [cite: 75]
-            RebuildVisual();     // [cite: 76]
-            RebuildCollider();   // [cite: 64]
+            var rotated = _currentData.Matrix.RotateRight().Trim();
+            _currentData.UpdateMatrix(rotated);
+            RebuildVisual();
+            RebuildCollider();
+            
+            // Dönünce ufak bir "Punch" efekti (Opsiyonel ama hoş durur)
+            transform.DOKill(true); // Önceki animasyonu bitir
+            transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 10, 1);
+            // Boyut bozulursa diye tekrar set et
+            float targetScale = _isDragging ? dragScale : slotScale;
+            transform.localScale = Vector3.one * targetScale;
         }
+        
+        // Eğer tutmuyorsak aşağısı çalışmasın
+        if (!_isDragging) return;
 
-        // 2. SÜRÜKLEME KONTROLÜ
-        // Eğer bu blok şu an sürüklenmiyorsa, hareket kodlarını çalıştırma.
-        if (!isDragging) return;
-
+        // --- 2. HAREKET ---
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouse.z = 0;
-
-        // 2. Merkez Hesaplama (Az önce düzelttiğimiz kısım)
-        float widthOffset = ((shape.Width - 1) * grid.cellSize) / 2f;
-        float heightOffset = ((shape.Height - 1) * grid.cellSize) / 2f;
         
-        Vector3 centerOffset = new Vector3(widthOffset, heightOffset, 0);
+        // Z=-5f ile her şeyin üstünde tutuyoruz
+        transform.position = mouse + new Vector3(0, dragOffsetY, -5f);
 
-        // 3. YUKARI KAYDIRMA VE POZİSYONLAMA
-        // Mouse - Merkez + Y_Kaydırma
-        Vector3 liftOffset = new Vector3(0, dragOffsetY, 0);
-        
-        transform.position = mouse - centerOffset + liftOffset;
+        // --- 3. GRID KONTROLÜ (SNAP FIX) ---
+        Vector3 originPos = transform.position - GetCenteringOffset();
+        Vector3 snapFix = new Vector3(_grid.cellSize / 2f, _grid.cellSize / 2f, 0);
 
-        // 4. Grid Kontrolleri (Değişmedi)
-        // GridManager, bloğun sol-alt köşesini referans alır, o yüzden transform.position gönderiyoruz.
-        Vector2Int cell = grid.WorldToCell(transform.position);
+        Vector2Int cell = _grid.WorldToCell(originPos + snapFix);
         
-        bool canPlace = grid.CanPlace(shape, cell.x, cell.y);
+        bool canPlace = _grid.CanPlace(_currentData, cell.x, cell.y);
 
         if (canPlace)
-            ghost.Show(shape, cell, grid);
+            _ghost.Show(_currentData, cell, _grid);
         else
-            ghost.Clear();
+            _ghost.Clear();
 
-        // Place (Bırakma)
+        // --- 4. BIRAKMA ---
         if (Input.GetMouseButtonUp(0))
         {
+            _isDragging = false;
+            
             if (canPlace)
             {
-                // ... (yerleştirme kodları aynı) ...
-                grid.PlacePiece(shape, cell.x, cell.y);
-                ghost.Clear();
-                Destroy(gameObject);
+                _grid.PlacePiece(_currentData, cell.x, cell.y);
+                _ghost.Clear();
                 BlockSpawner.Instance.OnBlockPlaced(this);
+                
+                // DOTween ile güvenli yok etme
+                transform.DOKill(); 
+                Destroy(gameObject);
             }
             else
             {
-                ghost.Clear();
-                isDragging = false;
-                transform.localPosition = Vector3.zero;
+                _ghost.Clear();
                 
-                // EKLENEN SATIR: Yerine geri döndüğünde tekrar küçülsün
-                transform.localScale = Vector3.one * slotScale;
+                // --- DOTWEEN İLE EVE DÖNÜŞ ---
+                // Coroutine yerine tek satır. OutBack lastik gibi fırlatır.
+                transform.DOMove(_startPosition, moveDuration).SetEase(Ease.OutBack);
+                transform.DOScale(slotScale, moveDuration).SetEase(Ease.OutBack);
             }
         }
     }
+
     void OnMouseDown()
     {
-        if (shape == null) return;
-        isDragging = true;
+        if (_currentData == null) return;
+        _isDragging = true;
         
-        // EKLENEN SATIR: Tıklayınca orijinal boyuta büyüt
-        transform.localScale = Vector3.one * dragScale;
-    }
-
-    void OnDisable()
-    {
-        if (ghost != null)
-            ghost.Clear();
+        // Önceki animasyonları durdur (Üst üste binmesin)
+        transform.DOKill();
+        
+        // --- DOTWEEN İLE BÜYÜME ---
+        transform.DOScale(dragScale, 0.2f).SetEase(Ease.OutBack);
     }
 }

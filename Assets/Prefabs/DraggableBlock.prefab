@@ -41,7 +41,8 @@ GameObject:
   m_Component:
   - component: {fileID: 4883268280909757998}
   - component: {fileID: 165353350420587251}
-  - component: {fileID: 7442666565372957831}
+  - component: {fileID: 8370594374965938039}
+  - component: {fileID: 9182828234707259768}
   m_Layer: 0
   m_Name: DraggableBlock
   m_TagString: Untagged
@@ -78,10 +79,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   visualRoot: {fileID: 8131255184211277938}
-  grid: {fileID: 0}
-  ghost: {fileID: 2127241684026449812, guid: 8a98efffd1c84bc45b021c8c1b9027a4, type: 3}
   cellPrefab: {fileID: 4533510624358484449, guid: 7f26736239a7db7468c16093016d0bb2, type: 3}
---- !u!60 &7442666565372957831
+  slotScale: 0.6
+  dragScale: 1
+  dragOffsetY: 2
+  returnSpeed: 15
+--- !u!114 &8370594374965938039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6810805135431661346}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b58bd2fa088c44aca4b9dbd32bfadb1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  container: {fileID: 8131255184211277938}
+  cellPrefab: {fileID: 4533510624358484449, guid: 7f26736239a7db7468c16093016d0bb2, type: 3}
+  slotScale: 0.5
+  dragScale: 1
+--- !u!60 &9182828234707259768
 PolygonCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -113,7 +132,7 @@ PolygonCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -0.25, y: -0.25}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
