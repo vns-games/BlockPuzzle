@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4623c72a181046ceabcbe8c9544ec040, type: 3}
+  m_Name: Pattern_1
+  m_EditorClassIdentifier: 
+  width: 8
+  height: 8
+  patternColor: {r: 1, g: 1, b: 1, a: 1}
+  startingBlocks:
+  - {fileID: 11400000, guid: 16215eb37092ddb459c5c13ba6a2613f, type: 2}
+  - {fileID: 11400000, guid: 16215eb37092ddb459c5c13ba6a2613f, type: 2}
+  - {fileID: 11400000, guid: 37b30e5e6830b4448a441d9963bd7758, type: 2}
+  cells: 00000000000000000101010101010101010000000000000101000000000000010000010000010000000000000000000000000000000000000000000000000000

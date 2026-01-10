@@ -1,29 +1,32 @@
-using System.Collections.Generic;
 using UnityEngine;
-using DG.Tweening; // 1. DOTween Kütüphanesini ekledik
+using DG.Tweening;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(PolygonCollider2D))]
 public class DraggableBlock : MonoBehaviour
 {
     // --- VERİ ---
+    public BlockShapeSO SourceSO { get; private set; } 
     private BlockData _currentData;
     private bool _isDragging;
     private Vector3 _startPosition;
 
-    // --- VISUAL & SETTINGS ---
-    [Header("Visual")]
+    [Header("Visual Settings")]
     public Transform visualRoot;
-    public GameObject cellPrefab;
+    public VisualCell visualCellPrefab; // <--- TİP DEĞİŞTİ: GameObject yerine VisualCell
     
-    [Header("Settings")]
-    public float slotScale = 0.6f;
-    public float dragScale = 1.0f;
-    public float dragOffsetY = 1f;
-    
-    // Coroutine hızı yerine Süre (Duration) kullanıyoruz
-    public float moveDuration = 0.3f; 
+    [Tooltip("Rastgele seçilecek renkler")]
+    public List<Sprite> blockSprites;
 
-    // --- REFS ---
+    [Header("Behavior Settings")]
+    public float slotScale = 0.6f;     
+    public float dragScale = 1.0f;     
+    public float dragOffsetY = 1f;     
+    public float moveDuration = 0.3f;  
+
+    // Oluşturulan hücreleri burada tutuyoruz
+    private List<VisualCell> _spawnedCells = new List<VisualCell>();
+
     private PolygonCollider2D _col;
     private GridManager _grid => GridManager.Instance;
     private BlockGhost _ghost => BlockGhost.Instance;
@@ -31,6 +34,7 @@ public class DraggableBlock : MonoBehaviour
     void Awake()
     {
         _col = GetComponent<PolygonCollider2D>();
+        _col.pathCount = 0; 
     }
 
     void Start()
@@ -41,6 +45,7 @@ public class DraggableBlock : MonoBehaviour
 
     public void Initialize(BlockShapeSO so)
     {
+        SourceSO = so;
         var matrix = so.ToMatrix().Trim();
         _currentData = new BlockData(matrix);
 
@@ -50,131 +55,65 @@ public class DraggableBlock : MonoBehaviour
     
     public BlockData GetData() => _currentData;
 
-    // --- MERKEZLEME HESABI ---
-    private Vector3 GetCenteringOffset()
-    {
-        if (_currentData == null) return Vector3.zero;
-        float s = _grid.cellSize;
-        
-        float ox = (_currentData.Width * s) / 2f;
-        float oy = (_currentData.Height * s) / 2f;
-        
-        return new Vector3(ox, oy, 0);
-    }
-
     void RebuildVisual()
     {
+        // 1. Eskileri temizle
         foreach (Transform c in visualRoot) Destroy(c.gameObject);
+        _spawnedCells.Clear();
+
         if (_currentData == null) return;
 
+        // 2. Rastgele Sprite Seç
+        Sprite selectedSprite = null;
+        if (blockSprites != null && blockSprites.Count > 0)
+            selectedSprite = blockSprites[Random.Range(0, blockSprites.Count)];
+
         float s = _grid.cellSize;
-        Vector3 offset = GetCenteringOffset();
+        // Ortalamak için offset hesabı
+        Vector3 offset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
         Vector3 halfCell = new Vector3(s / 2f, s / 2f, 0);
 
+        // 3. Hücreleri VisualCell scriptiyle oluştur
         for (int x = 0; x < _currentData.Width; x++)
         {
             for (int y = 0; y < _currentData.Height; y++)
             {
                 if (!_currentData.Matrix[x, y]) continue;
+
                 Vector3 pos = new Vector3(x * s, y * s, 0) + halfCell - offset;
-                Instantiate(cellPrefab, visualRoot).transform.localPosition = pos;
+                
+                // Prefabı oluştur
+                VisualCell cell = Instantiate(visualCellPrefab, visualRoot);
+                cell.transform.localPosition = pos;
+
+                // Hücreyi Başlat (Initialize)
+                // Sorting Order'ı 10 yaptık, sen katmanına göre değiştirebilirsin.
+                cell.Initialize(selectedSprite, 10);
+
+                // Listeye ekle (Yönetmek için)
+                _spawnedCells.Add(cell);
             }
         }
     }
 
+    // --- YENİ COLLIDER OLUŞTURMA (Öncekiyle Aynı) ---
     void RebuildCollider()
     {
         if (_currentData == null) return;
-        
-        _col.pathCount = 0;
-        List<Vector2[]> paths = new();
+        _col.pathCount = 1;
         float s = _grid.cellSize;
-        Vector3 offset = GetCenteringOffset();
+        Vector3 offset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
+        float totalWidth = _currentData.Width * s;
+        float totalHeight = _currentData.Height * s;
 
-        for (int x = 0; x < _currentData.Width; x++)
+        Vector2[] points = new Vector2[]
         {
-            for (int y = 0; y < _currentData.Height; y++)
-            {
-                if (!_currentData.Matrix[x, y]) continue;
-                float px = (x * s) - offset.x;
-                float py = (y * s) - offset.y;
-                paths.Add(new Vector2[] {
-                    new(px, py), new(px + s, py), new(px + s, py + s), new(px, py + s)
-                });
-            }
-        }
-        _col.pathCount = paths.Count;
-        for (int i = 0; i < paths.Count; i++) _col.SetPath(i, paths[i]);
-    }
-
-    void Update()
-    {
-        if (_currentData == null) return;
-
-        // --- 1. ROTASYON ---
-        if (Input.GetKeyDown(KeyCode.R)) // Tutmasak da dönebilir
-        {
-            var rotated = _currentData.Matrix.RotateRight().Trim();
-            _currentData.UpdateMatrix(rotated);
-            RebuildVisual();
-            RebuildCollider();
-            
-            // Dönünce ufak bir "Punch" efekti (Opsiyonel ama hoş durur)
-            transform.DOKill(true); // Önceki animasyonu bitir
-            transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 10, 1);
-            // Boyut bozulursa diye tekrar set et
-            float targetScale = _isDragging ? dragScale : slotScale;
-            transform.localScale = Vector3.one * targetScale;
-        }
-        
-        // Eğer tutmuyorsak aşağısı çalışmasın
-        if (!_isDragging) return;
-
-        // --- 2. HAREKET ---
-        Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouse.z = 0;
-        
-        // Z=-5f ile her şeyin üstünde tutuyoruz
-        transform.position = mouse + new Vector3(0, dragOffsetY, -5f);
-
-        // --- 3. GRID KONTROLÜ (SNAP FIX) ---
-        Vector3 originPos = transform.position - GetCenteringOffset();
-        Vector3 snapFix = new Vector3(_grid.cellSize / 2f, _grid.cellSize / 2f, 0);
-
-        Vector2Int cell = _grid.WorldToCell(originPos + snapFix);
-        
-        bool canPlace = _grid.CanPlace(_currentData, cell.x, cell.y);
-
-        if (canPlace)
-            _ghost.Show(_currentData, cell, _grid);
-        else
-            _ghost.Clear();
-
-        // --- 4. BIRAKMA ---
-        if (Input.GetMouseButtonUp(0))
-        {
-            _isDragging = false;
-            
-            if (canPlace)
-            {
-                _grid.PlacePiece(_currentData, cell.x, cell.y);
-                _ghost.Clear();
-                BlockSpawner.Instance.OnBlockPlaced(this);
-                
-                // DOTween ile güvenli yok etme
-                transform.DOKill(); 
-                Destroy(gameObject);
-            }
-            else
-            {
-                _ghost.Clear();
-                
-                // --- DOTWEEN İLE EVE DÖNÜŞ ---
-                // Coroutine yerine tek satır. OutBack lastik gibi fırlatır.
-                transform.DOMove(_startPosition, moveDuration).SetEase(Ease.OutBack);
-                transform.DOScale(slotScale, moveDuration).SetEase(Ease.OutBack);
-            }
-        }
+            new Vector2(-offset.x, -offset.y),
+            new Vector2(totalWidth - offset.x, -offset.y),
+            new Vector2(totalWidth - offset.x, totalHeight - offset.y),
+            new Vector2(-offset.x, totalHeight - offset.y)
+        };
+        _col.SetPath(0, points);
     }
 
     void OnMouseDown()
@@ -182,10 +121,62 @@ public class DraggableBlock : MonoBehaviour
         if (_currentData == null) return;
         _isDragging = true;
         
-        // Önceki animasyonları durdur (Üst üste binmesin)
+        // 1. Tüm hücrelere "Sürükleniyorsun" komutu ver
+        foreach (var cell in _spawnedCells) cell.OnDragging();
+
         transform.DOKill();
-        
-        // --- DOTWEEN İLE BÜYÜME ---
         transform.DOScale(dragScale, 0.2f).SetEase(Ease.OutBack);
+    }
+
+    void Update()
+    {
+        if (!_isDragging || _currentData == null) return;
+
+        // Mouse Takibi
+        Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouse.z = 0; 
+        transform.position = new Vector3(mouse.x, mouse.y, -5f) + new Vector3(0, dragOffsetY, 0);
+
+        // Ghost Gösterimi
+        Vector3 originPos = transform.position - visualRoot.localPosition; // Offset düzeltmesi gerekebilir, visualRoot local 0 ise sorun yok.
+        // Basitçe önceki logic:
+        float s = _grid.cellSize;
+        Vector3 centerOffset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
+        Vector3 origin = transform.position - centerOffset;
+
+        Vector3 snapFix = new Vector3(s / 2f, s / 2f, 0);
+        Vector2Int cell = _grid.WorldToCell(origin + snapFix);
+        
+        bool canPlace = _grid.CanPlace(_currentData, cell.x, cell.y);
+
+        if (canPlace) _ghost.Show(_currentData, cell, _grid);
+        else _ghost.Clear();
+
+        // Bırakma
+        if (Input.GetMouseButtonUp(0))
+        {
+            _isDragging = false;
+            
+            if (canPlace)
+            {
+                // 2. Tüm hücrelere "Bırakıldın" komutu ver
+                foreach (var c in _spawnedCells) c.OnDrop();
+
+                _grid.PlacePiece(_currentData, cell.x, cell.y);
+                _ghost.Clear();
+                BlockSpawner.Instance.OnBlockPlaced(this);
+                transform.DOKill(); 
+                Destroy(gameObject); // Veya animasyonla yok et
+            }
+            else
+            {
+                // 3. Yerleşemedi, "Idle" moduna dön
+                foreach (var c in _spawnedCells) c.OnIdle();
+
+                _ghost.Clear();
+                transform.DOMove(_startPosition, moveDuration).SetEase(Ease.OutBack);
+                transform.DOScale(slotScale, moveDuration).SetEase(Ease.OutBack);
+            }
+        }
     }
 }

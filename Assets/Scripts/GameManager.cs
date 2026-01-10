@@ -1,32 +1,52 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 using VnS.Utility.Singleton;
+
 public class GameManager : Singleton<GameManager>
 {
-    [Header("UI References")]
-    public GameObject gameOverPanel; // Inspector'dan atanacak Panel
+    private bool _hasUsedRevive = false; // Bu oyun içinde dirilme hakkını kullandı mı?
 
-    // Oyun durumunu takip edebiliriz
-    public bool IsGameOver { get; private set; }
+    public void StartGame()
+    {
+        _hasUsedRevive = false;
+        // Diğer başlatma kodları...
+    }
 
     public void TriggerGameOver()
     {
-        if (IsGameOver) return; // Zaten bittiyse tekrar tetikleme
-        
-        IsGameOver = true;
-        Debug.Log("GAME OVER!");
-
-        // 1. Paneli aç
-        if (gameOverPanel != null) 
-            gameOverPanel.SetActive(true);
-
-        // 2. İstersen blokların sürüklenmesini engelleyebilirsin
-        // (BlockInput gibi bir scriptin varsa disable edersin)
+        if (_hasUsedRevive)
+        {
+            // Zaten hakkını kullandıysa -> GERÇEK GAME OVER
+            Debug.Log("Oyun bitti. Skor ekranı açılıyor.");
+            // UIManager.Instance.ShowLoseScreen();
+        }
+        else
+        {
+            // Hakkı var -> REKLAM TEKLİFİ
+            Debug.Log("Öldün! Ama reklam izlersen 1x1 bloklarla devam edebilirsin.");
+            
+            // Burası UI Manager'ı tetikler:
+            //UIManager.Instance.ShowReviveOfferUI(); 
+        }
     }
 
-    public void RestartGame()
+    // UI'daki "Reklamı İzle" butonu buna bağlanacak (Reklam başarıyla bitince)
+    public void OnReviveSuccess()
     {
-        // Şu anki sahneyi baştan yükle
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        _hasUsedRevive = true; // Hakkını yedi
+        
+        Debug.Log("Reklam izlendi, oyun devam ediyor.");
+        
+        // BlockSpawner'a "Bana o özel 1x1'leri ver" diyoruz
+        BlockSpawner.Instance.SpawnReviveBlocks();
+        
+        // UI'ı kapat
+        //UIManager.Instance.HideReviveUI();
+    }
+
+    // UI'daki "Hayır, İstemiyorum" butonu buna bağlanacak
+    public void OnReviveDeclined()
+    {
+        Debug.Log("Teklif reddedildi. Gerçek Game Over.");
+        // UIManager.Instance.ShowLoseScreen();
     }
 }
