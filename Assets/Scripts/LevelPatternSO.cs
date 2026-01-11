@@ -9,11 +9,7 @@ public class LevelPatternSO : ScriptableObject
     
     [Tooltip("Bu desendeki blokların rengi")]
     public Color patternColor = Color.white;
-
-    [Header("Özel Başlangıç")]
-    [Tooltip("Desen yüklendiğinde slota gelecek İLK 3 blok. Boş bırakırsan sistem kendisi hesaplar.")]
-    public List<BlockShapeSO> startingBlocks; 
-
+    
     [HideInInspector] 
     public bool[] cells = new bool[64]; 
 

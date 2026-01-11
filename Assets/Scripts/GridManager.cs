@@ -32,18 +32,13 @@ public partial class GridManager : Singleton<GridManager>
     {
         // 1. Temizlik
         for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) ClearCell(x, y);
-
-        List<BlockShapeSO> customStartBlocks = null; // Spawner'a göndereceğimiz liste
-
+        
         // 2. Desen Seçimi
         if (starterLevels != null && starterLevels.Count > 0)
         {
             LevelPatternSO selectedLevel = starterLevels[Random.Range(0, starterLevels.Count)];
             Debug.Log($"Seçilen Desen: {selectedLevel.name}");
-
-            // --- YENİ: Seçilen desenin özel bloklarını al ---
-            customStartBlocks = selectedLevel.startingBlocks;
-            // -----------------------------------------------
+            
 
             for (int x = 0; x < width; x++)
             {
@@ -65,7 +60,7 @@ public partial class GridManager : Singleton<GridManager>
 
         // 3. Oyunu Başlat (Özel listeyi göndererek)
         // Eğer customStartBlocks boşsa veya null ise, Spawner zaten otomatik modda başlayacak.
-        BlockSpawner.Instance.StartGame(customStartBlocks);
+        BlockSpawner.Instance.StartGame();
     }
 public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> candidates)
     {
@@ -190,23 +185,7 @@ public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> candidates)
         }
         return (float)occupiedCount / (width * height);
     }
-    public List<BlockShapeSO> GetLineClearingShapes(List<BlockShapeSO> candidates)
-    {
-        List<BlockShapeSO> explosiveShapes = new List<BlockShapeSO>();
-        if (candidates == null) return explosiveShapes;
-
-        foreach (var shape in candidates)
-        {
-            BlockData data = new BlockData(shape.ToMatrix().Trim());
-            
-            // Bu şekil gridde herhangi bir yerde patlamaya sebep oluyor mu?
-            if (CheckIfCausesExplosionAnywhere(data))
-            {
-                explosiveShapes.Add(shape);
-            }
-        }
-        return explosiveShapes;
-    }
+   
 
     private bool CheckIfCausesExplosionAnywhere(BlockData data)
     {
@@ -417,69 +396,7 @@ public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> candidates)
         }
     
         // O anki pozisyonda şeklin etrafında kaç tane dolu blok (veya duvar) var?
-        private int CalculateContactScore(BlockData data, int startX, int startY)
-        {
-            int score = 0;
-    
-            for (int x = 0; x < data.Width; x++)
-            {
-                for (int y = 0; y < data.Height; y++)
-                {
-                    if (!data.Matrix[x, y]) continue; // Sadece dolu hücreler için bak
-    
-                    int gx = startX + x;
-                    int gy = startY + y;
-    
-                    // 4 Yönü Kontrol Et (Yukarı, Aşağı, Sağ, Sol)
-                    // Eğer o yönde bir blok varsa veya grid dışıysa (Duvar), puan ver.
-                    // Bu sayede parça "Yuvaya girmiş" gibi olur.
-                    
-                    // Sol
-                    if (gx - 1 < 0 || _grid[gx - 1, gy]) score++;
-                    // Sağ
-                    if (gx + 1 >= width || _grid[gx + 1, gy]) score++;
-                    // Aşağı
-                    if (gy - 1 < 0 || _grid[gx, gy - 1]) score++;
-                    // Yukarı
-                    if (gy + 1 >= height || _grid[gx, gy + 1]) score++;
-                }
-            }
-            return score;
-        }
-    public List<BlockShapeSO> GetHoleFillingShapes(List<BlockShapeSO> candidates, float minFitRatio = 0.5f)
-    {
-        Dictionary<BlockShapeSO, float> bestScores = new Dictionary<BlockShapeSO, float>();
-        float overallBestScore = 0f;
-
-        foreach (var shape in candidates)
-        {
-            BlockData data = new BlockData(shape.ToMatrix().Trim());
-            
-            // Bu şeklin griddeki en iyi oturduğu yerdeki skoru ne?
-            float score = GetBestFitScore(data);
-            
-            if (score >= minFitRatio)
-            {
-                bestScores[shape] = score;
-                if (score > overallBestScore) overallBestScore = score;
-            }
-        }
-
-        // Sadece en iyileri ve en iyiye çok yakın olanları döndür (Eşik toleransı: 0.1f)
-        List<BlockShapeSO> bestShapes = new List<BlockShapeSO>();
-        if (overallBestScore < minFitRatio) return bestShapes; // Yeterince iyi uyan yoksa boş dön
-
-        foreach (var kvp in bestScores)
-        {
-            // En yüksek skora sahip olanları (veya %10 altına kadar yakın olanları) seç
-            if (kvp.Value >= overallBestScore - 0.1f)
-            {
-                bestShapes.Add(kvp.Key);
-            }
-        }
-
-        return bestShapes;
-    }
+        
 
     private float GetBestFitScore(BlockData data)
     {
@@ -551,6 +468,436 @@ public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> candidates)
             }
         }
         return contacts;
+    }
+    public List<BlockShapeSO> GetTotalClearShapes(List<BlockShapeSO> candidates)
+    {
+        List<BlockShapeSO> wipeoutShapes = new List<BlockShapeSO>();
+        
+        // Eğer grid zaten boşsa, temizleme diye bir şey olamaz
+        if (GetFillPercentage() == 0) return wipeoutShapes;
+
+        foreach (var shape in candidates)
+        {
+            BlockData data = new BlockData(shape.ToMatrix().Trim());
+            
+            // Bu şekil gridde herhangi bir yere konunca Total Clear yapıyor mu?
+            if (CheckIfTotalClear(data))
+            {
+                wipeoutShapes.Add(shape);
+            }
+        }
+        return wipeoutShapes;
+    }
+
+    private bool CheckIfTotalClear(BlockData data)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (!CanPlace(data, x, y)) continue;
+
+                if (SimulateTotalClear(data, x, y)) return true;
+            }
+        }
+        return false;
+    }
+
+    private bool SimulateTotalClear(BlockData data, int startX, int startY)
+    {
+        // 1. Hangi satır ve sütunların patlayacağını hesapla
+        HashSet<int> clearedRows = new HashSet<int>();
+        HashSet<int> clearedCols = new HashSet<int>();
+
+        // Satır Kontrolü
+        for (int y = 0; y < data.Height; y++)
+        {
+            int gridY = startY + y;
+            // Bu satırda parçanın bloğu var mı?
+            bool rowHasBlock = false;
+            for(int px=0; px<data.Width; px++) if(data.Matrix[px, y]) { rowHasBlock = true; break; }
+            if(!rowHasBlock) continue;
+
+            // Gridde kaç dolu + Parça kaç ekliyor = Genişlik mi?
+            int currentFilled = 0;
+            for(int gx=0; gx<width; gx++) if(_grid[gx, gridY]) currentFilled++;
+            
+            int pieceContribution = 0;
+            for(int px=0; px<data.Width; px++) if(data.Matrix[px, y]) pieceContribution++;
+
+            if (currentFilled + pieceContribution == width) clearedRows.Add(gridY);
+        }
+
+        // Sütun Kontrolü
+        for (int x = 0; x < data.Width; x++)
+        {
+            int gridX = startX + x;
+            bool colHasBlock = false;
+            for(int py=0; py<data.Height; py++) if(data.Matrix[x, py]) { colHasBlock = true; break; }
+            if(!colHasBlock) continue;
+
+            int currentFilled = 0;
+            for(int gy=0; gy<height; gy++) if(_grid[gridX, gy]) currentFilled++;
+            
+            int pieceContribution = 0;
+            for(int py=0; py<data.Height; py++) if(data.Matrix[x, py]) pieceContribution++;
+
+            if (currentFilled + pieceContribution == height) clearedCols.Add(gridX);
+        }
+
+        // Eğer hiç satır/sütun silinmiyorsa Total Clear olamaz
+        if (clearedRows.Count == 0 && clearedCols.Count == 0) return false;
+
+        // 2. KRİTİK KONTROL: Griddeki TÜM dolu hücreler, silinen bu satır/sütunların içinde mi?
+        // Eğer dışarıda kalan tek bir blok bile varsa Total Clear değildir.
+        for (int gx = 0; gx < width; gx++)
+        {
+            for (int gy = 0; gy < height; gy++)
+            {
+                if (_grid[gx, gy]) // Gridde dolu bir blok var
+                {
+                    // Eğer bu blok silinen satırda DEĞİLSE VE silinen sütunda DEĞİLSE -> Kalacak demektir.
+                    if (!clearedRows.Contains(gy) && !clearedCols.Contains(gx))
+                    {
+                        return false; // Temizlenmeyen artık var
+                    }
+                }
+            }
+        }
+
+        return true; // Tüm dolu hücreler kapsama alanında!
+    }
+    
+   
+    
+    public List<BlockShapeSO> GetPerfectClearShapes(List<BlockShapeSO> candidates)
+    {
+        List<BlockShapeSO> perfectShapes = new List<BlockShapeSO>();
+        int maxLinesCleared = 0;
+
+        foreach (var shape in candidates)
+        {
+            BlockData data = new BlockData(shape.ToMatrix().Trim());
+            bool isPerfect = false;
+            int currentLines = 0;
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    if (CanPlace(data, x, y))
+                    {
+                        // Bu noktaya konursa kusursuz bir temizlik oluyor mu?
+                        int lines = CheckPerfectClearScore(data, x, y);
+                        
+                        if (lines > 0)
+                        {
+                            // Eğer bu parça daha fazla satır siliyorsa listeyi sıfırla ve bunu ekle
+                            if (lines > maxLinesCleared)
+                            {
+                                maxLinesCleared = lines;
+                                perfectShapes.Clear();
+                                perfectShapes.Add(shape);
+                            }
+                            // Eşitse listeye ekle
+                            else if (lines == maxLinesCleared)
+                            {
+                                perfectShapes.Add(shape);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return perfectShapes;
+    }
+
+    // Yardımcı: Parçanın tamamı patlayan satır/sütunlara dahil mi?
+    private int CheckPerfectClearScore(BlockData data, int startX, int startY)
+    {
+        // 1. Simülasyon: Hangi satır ve sütunlar dolacak?
+        HashSet<int> fullRows = new HashSet<int>();
+        HashSet<int> fullCols = new HashSet<int>();
+
+        // Satır Kontrolü
+        for (int y = 0; y < data.Height; y++)
+        {
+            int gridY = startY + y;
+            // Bu satırda parça var mı?
+            bool rowHasBlock = false;
+            for(int px=0; px<data.Width; px++) if(data.Matrix[px, y]) { rowHasBlock = true; break; }
+            if(!rowHasBlock) continue;
+
+            int currentFilled = 0;
+            for(int gx=0; gx<width; gx++) if(_grid[gx, gridY]) currentFilled++;
+            
+            int pieceContribution = 0;
+            for(int px=0; px<data.Width; px++) if(data.Matrix[px, y]) pieceContribution++;
+
+            if (currentFilled + pieceContribution == width) fullRows.Add(gridY);
+        }
+
+        // Sütun Kontrolü
+        for (int x = 0; x < data.Width; x++)
+        {
+            int gridX = startX + x;
+            bool colHasBlock = false;
+            for(int py=0; py<data.Height; py++) if(data.Matrix[x, py]) { colHasBlock = true; break; }
+            if(!colHasBlock) continue;
+
+            int currentFilled = 0;
+            for(int gy=0; gy<height; gy++) if(_grid[gridX, gy]) currentFilled++;
+            
+            int pieceContribution = 0;
+            for(int py=0; py<data.Height; py++) if(data.Matrix[x, py]) pieceContribution++;
+
+            if (currentFilled + pieceContribution == height) fullCols.Add(gridX);
+        }
+
+        // Eğer hiç satır/sütun silinmiyorsa 0 döndür
+        if (fullRows.Count == 0 && fullCols.Count == 0) return 0;
+
+        // 2. KRİTİK NOKTA: "Dışına Taşmama" Kontrolü
+        // Parçanın DOLU olan her hücresi, patlayan bir satırın VEYA sütunun içinde mi?
+        for (int x = 0; x < data.Width; x++)
+        {
+            for (int y = 0; y < data.Height; y++)
+            {
+                if (data.Matrix[x, y]) // Parçanın bu hücresi dolu
+                {
+                    int gridX = startX + x;
+                    int gridY = startY + y;
+
+                    // Eğer bu hücre ne patlayan satırda ne de patlayan sütundaysa -> TAŞIYOR DEMEKTİR.
+                    if (!fullRows.Contains(gridY) && !fullCols.Contains(gridX))
+                    {
+                        return 0; // Kusursuz değil, elendi.
+                    }
+                }
+            }
+        }
+
+        return fullRows.Count + fullCols.Count; // Toplam silinen satır sayısı
+    }
+
+
+    // --- MAKSİMUM TEMAS (SURFACE CONTACT) ---
+    public List<BlockShapeSO> GetMostTouchingShapes(List<BlockShapeSO> candidates)
+    {
+        List<BlockShapeSO> bestShapes = new List<BlockShapeSO>();
+        int globalMaxContact = -1;
+
+        foreach (var shape in candidates)
+        {
+            BlockData data = new BlockData(shape.ToMatrix().Trim());
+            int maxContactForShape = 0;
+            bool fits = false;
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    if (CanPlace(data, x, y))
+                    {
+                        fits = true;
+                        int score = CalculateContactScore(data, x, y);
+                        if (score > maxContactForShape) maxContactForShape = score;
+                    }
+                }
+            }
+
+            if (!fits) continue;
+
+            if (maxContactForShape > globalMaxContact)
+            {
+                globalMaxContact = maxContactForShape;
+                bestShapes.Clear();
+                bestShapes.Add(shape);
+            }
+            else if (maxContactForShape == globalMaxContact)
+            {
+                bestShapes.Add(shape);
+            }
+        }
+        return bestShapes;
+    }
+
+    private int CalculateContactScore(BlockData data, int startX, int startY)
+    {
+        int score = 0;
+        for (int x = 0; x < data.Width; x++)
+        {
+            for (int y = 0; y < data.Height; y++)
+            {
+                if (!data.Matrix[x, y]) continue;
+                int gx = startX + x; int gy = startY + y;
+                
+                // 4 yöne bak, doluysa veya duvarsa puan ver
+                CheckNeighbor(gx + 1, gy, ref score);
+                CheckNeighbor(gx - 1, gy, ref score);
+                CheckNeighbor(gx, gy + 1, ref score);
+                CheckNeighbor(gx, gy - 1, ref score);
+            }
+        }
+        return score;
+    }
+
+    private void CheckNeighbor(int x, int y, ref int score)
+    {
+        // Duvarlar da "temas" sayılır, köşeye sıkıştırmayı teşvik eder
+        if (x < 0 || x >= width || y < 0 || y >= height) { score++; return; }
+        if (_grid[x, y]) score++;
+    }
+    
+
+    // Parçanın çevresinin ne kadarının "Dolu" veya "Duvar" olduğunu hesaplar (0.0 ile 1.0 arası)
+    private float CalculateFitScore(BlockData data, int startX, int startY)
+    {
+        int totalPerimeter = 0;
+        int touchingPerimeter = 0;
+
+        for (int x = 0; x < data.Width; x++)
+        {
+            for (int y = 0; y < data.Height; y++)
+            {
+                if (!data.Matrix[x, y]) continue;
+
+                int gx = startX + x;
+                int gy = startY + y;
+
+                // 4 Yönü kontrol et
+                CheckSide(gx + 1, gy, ref totalPerimeter, ref touchingPerimeter); // Sağ
+                CheckSide(gx - 1, gy, ref totalPerimeter, ref touchingPerimeter); // Sol
+                CheckSide(gx, gy + 1, ref totalPerimeter, ref touchingPerimeter); // Yukarı
+                CheckSide(gx, gy - 1, ref totalPerimeter, ref touchingPerimeter); // Aşağı
+            }
+        }
+
+        if (totalPerimeter == 0) return 0f;
+        return (float)touchingPerimeter / totalPerimeter;
+    }
+
+    private void CheckSide(int gx, int gy, ref int total, ref int touching)
+    {
+        // Kendi parçamızın içi mi? (Dolu hücreyse dış çevre değildir, sayma)
+        // Not: Bu basit implementasyonda, parçanın kendi iç komşuluklarını çevre saymamak daha doğrudur 
+        // ama işlem yükü artar. Basitçe: "Hedef hücre dolu mu?" diye bakıyoruz.
+        
+        // Basit Mantık: Her kenar bir potansiyel temas yüzeyidir.
+        total++;
+
+        // 1. DUVAR TEMASI (Grid Dışı) - KRİTİK NOKTA BURASI
+        if (gx < 0 || gx >= width || gy < 0 || gy >= height)
+        {
+            touching++; // Evet! Duvara yaslanmak "Güvenli" hissettirir, puan ver.
+            return;
+        }
+
+        // 2. BLOK TEMASI (Grid İçi)
+        if (_grid[gx, gy])
+        {
+            touching++; // Mevcut bir bloğa değiyor.
+        }
+    }
+    
+    public List<BlockShapeSO> GetHoleFillingShapes(List<BlockShapeSO> candidates, float threshold = 0.6f)
+    {
+        List<BlockShapeSO> bestShapes = new List<BlockShapeSO>();
+        float bestScore = -1f;
+
+        foreach (var shape in candidates)
+        {
+            BlockData data = new BlockData(shape.ToMatrix().Trim());
+            
+            // Tüm gridi tara
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    // 1. Önce sığıyor mu?
+                    if (CanPlace(data, x, y))
+                    {
+                        // 2. Sığıyorsa "Sıkışıklık Testi" yap
+                        float score = CalculateHoleFitScore(data, x, y);
+
+                        if (score >= threshold)
+                        {
+                            // Eğer bu skor, şimdiye kadarki en iyi skorsa veya çok yakınsa
+                            if (score > bestScore)
+                            {
+                                bestScore = score;
+                                bestShapes.Clear(); // Daha iyisini bulduk, eskileri sil
+                                bestShapes.Add(shape);
+                            }
+                            else if (Mathf.Abs(score - bestScore) < 0.01f) // Eşitse ekle
+                            {
+                                if (!bestShapes.Contains(shape)) bestShapes.Add(shape);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return bestShapes;
+    }
+
+    // Bir parçanın o noktada ne kadar "Sarıldığını" hesaplar (0.0 ile 1.0 arası)
+    private float CalculateHoleFitScore(BlockData data, int startX, int startY)
+    {
+        int totalExposedEdges = 0; // Parçanın dış çeper uzunluğu
+        int touchingEdges = 0;     // Bir yere (Blok veya Duvar) değen kenar sayısı
+
+        for (int x = 0; x < data.Width; x++)
+        {
+            for (int y = 0; y < data.Height; y++)
+            {
+                if (!data.Matrix[x, y]) continue; // Boş pikseli geç
+
+                int gx = startX + x;
+                int gy = startY + y;
+
+                // 4 Yönü Kontrol Et (Sağ, Sol, Yukarı, Aşağı)
+                CheckDirection(gx + 1, gy, data, x + 1, y, ref totalExposedEdges, ref touchingEdges); // Sağ
+                CheckDirection(gx - 1, gy, data, x - 1, y, ref totalExposedEdges, ref touchingEdges); // Sol
+                CheckDirection(gx, gy + 1, data, x, y + 1, ref totalExposedEdges, ref touchingEdges); // Yukarı
+                CheckDirection(gx, gy - 1, data, x, y - 1, ref totalExposedEdges, ref touchingEdges); // Aşağı
+            }
+        }
+
+        if (totalExposedEdges == 0) return 0f;
+        return (float)touchingEdges / totalExposedEdges;
+    }
+
+    private void CheckDirection(int gridX, int gridY, BlockData data, int shapeNeighborX, int shapeNeighborY, ref int total, ref int touching)
+    {
+        // 1. BU KENAR PARÇANIN İÇİNDE Mİ KALIYOR?
+        // Eğer parçanın kendisi o yönde devam ediyorsa, orası "dış kenar" değildir. Sayma.
+        bool isInternal = false;
+        if (shapeNeighborX >= 0 && shapeNeighborX < data.Width &&
+            shapeNeighborY >= 0 && shapeNeighborY < data.Height)
+        {
+            if (data.Matrix[shapeNeighborX, shapeNeighborY]) isInternal = true;
+        }
+
+        if (isInternal) return; // İç kenarsa hesaplamaya katma.
+
+        // Buraya geldiyse burası parçanın "Dış Yüzeyi"dir (Perimeter).
+        total++; 
+
+        // 2. PEKİ BU DIŞ YÜZEY NEYE DEĞİYOR?
+        
+        // A) DUVARA DEĞİYORSA (Senin isteğin: Duvarlar kapalı karedir)
+        if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= height)
+        {
+            touching++;
+            return;
+        }
+
+        // B) BAŞKA BİR BLOĞA DEĞİYORSA
+        if (_grid[gridX, gridY])
+        {
+            touching++;
+        }
     }
     // Yardımcılar...
     private List<int> GetFullRows() { List<int> r=new(); for(int y=0;y<height;y++){bool f=true;for(int x=0;x<width;x++)if(!_grid[x,y]){f=false;break;}if(f)r.Add(y);} return r; }
