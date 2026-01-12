@@ -333,7 +333,7 @@ MonoBehaviour:
   endThresholdRange: {x: 0.4, y: 0.55}
   startHelpThreshold: 0.15
   criticalThreshold: 0.3
-  maxCriticalRescueTurns: 3
+  maxCriticalRescueTurns: 5
 --- !u!4 &314417128
 Transform:
   m_ObjectHideFlags: 0

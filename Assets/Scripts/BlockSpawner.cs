@@ -89,10 +89,29 @@ public class BlockSpawner : MonoBehaviour
 
     private void LogModeChange(SpawnerMode newMode, float fillPercent)
     {
+        // --- WARMUP BİTİŞ LOGU ---
+        // Eğer şu anki mod WarmUp ise VE yeni gelen mod WarmUp değilse; demek ki süre doldu.
+        if (_currentMode == SpawnerMode.WarmUp && newMode != SpawnerMode.WarmUp)
+        {
+            Debug.Log($"<color=red><b>==========================================</b></color>");
+            Debug.Log($"<color=cyan><b>🔥 ISINMA TURU TAMAMLANDI! GERÇEK OYUN BAŞLIYOR 🔥</b></color>");
+            Debug.Log($"<color=red><b>==========================================</b></color>");
+        }
+
+        // Standart Mod Değişim Logu
         if (_currentMode != newMode)
         {
             _currentMode = newMode;
-            // Debug.Log($"[MOD: {newMode}] Grid: %{fillPercent*100:F0}");
+            string color = "white";
+            switch (newMode) {
+                case SpawnerMode.WarmUp: color = "green"; break;
+                case SpawnerMode.Critical: color = "red"; break;
+                case SpawnerMode.TotalWipeout: color = "magenta"; break;
+                case SpawnerMode.SmartHelp: color = "yellow"; break;
+                case SpawnerMode.SkillBased: color = "grey"; break;
+                case SpawnerMode.Relax: color = "cyan"; break;
+            }
+            Debug.Log($"<color={color}>[MOD DEĞİŞTİ: {newMode}]</color> Grid Doluluk: %{fillPercent*100:F0}");
         }
     }
 
@@ -134,7 +153,6 @@ public class BlockSpawner : MonoBehaviour
         {
             calculatedMode = SpawnerMode.WarmUp;
             
-            // Tüm işe yarar parçaları birleştir (Analiz Havuzu)
             List<BlockShapeSO> analysisPool = new List<BlockShapeSO>();
             if (cleanShapes != null) analysisPool.AddRange(cleanShapes);
             if (cornerShapes != null) analysisPool.AddRange(cornerShapes);
@@ -148,16 +166,29 @@ public class BlockSpawner : MonoBehaviour
             if (maxLines >= 2)
             {
                 targetPool = comboKillers;
+                // Debug.Log("WarmUp: Multi-Kill");
             }
             else
             {
-                // 2. ÖNCELİK: KİLİT AÇMA (Hole Filler)
-                // Eşiği biraz esnek (0.70) tutuyoruz ki "neredeyse uyan" parçaları da versin.
+                // 2. ÖNCELİK: KİLİT AÇMA (HOLE FILLER)
+                // Eşiği 0.70f (veya duvarlar dahilse 0.60f) tutuyoruz.
                 List<BlockShapeSO> keys = GridManager.Instance.GetHoleFillingShapes(analysisPool, 0.70f);
 
                 if (keys.Count > 0)
                 {
-                    targetPool = keys;
+                    // --- KRİTİK DOKUNUŞ: BÜYÜKLÜK SIRALAMASI ---
+                    // Bulunan "Anahtar" parçaları büyüklüklerine (Kütlelerine) göre sırala.
+                    // Böylece 1x1 kare yerine, 3x3 L parçası en başa geçer.
+                    
+                    // (Listenin kopyasını alıp sıralıyoruz)
+                    keys.Sort((a, b) => GetShapeMass(b).CompareTo(GetShapeMass(a))); // Büyükten küçüğe
+
+                    // Sadece en büyükleri (veya en büyüğü) havuza al
+                    // En büyük skora sahip olanların hepsini al (eşit büyüklüktekiler)
+                    int bestMass = GetShapeMass(keys[0]);
+                    targetPool = keys.FindAll(x => GetShapeMass(x) == bestMass);
+
+                    // Debug.Log($"WarmUp: Kilit Açıcı (Boyut: {bestMass})");
                 }
                 else
                 {
@@ -168,9 +199,18 @@ public class BlockSpawner : MonoBehaviour
                     }
                     else
                     {
-                        // 4. ÖNCELİK: HAYATTA KALMA (Sığan Herhangi Temiz Parça)
-                        List<BlockShapeSO> survivors = GridManager.Instance.GetGapFillingShapes(analysisPool);
-                        targetPool = (survivors.Count > 0) ? survivors : GridManager.Instance.GetGapFillingShapes(easyShapes);
+                        // 4. ÖNCELİK: HAYATTA KALMA (Sadece Temizler)
+                        List<BlockShapeSO> cleanSurvivors = GridManager.Instance.GetGapFillingShapes(cleanShapes);
+                        
+                        if (cleanSurvivors.Count > 0)
+                        {
+                            targetPool = cleanSurvivors;
+                        }
+                        else
+                        {
+                            List<BlockShapeSO> messySurvivors = GridManager.Instance.GetGapFillingShapes(analysisPool);
+                            targetPool = (messySurvivors.Count > 0) ? messySurvivors : GridManager.Instance.GetGapFillingShapes(easyShapes);
+                        }
                     }
                 }
             }
@@ -385,7 +425,17 @@ public class BlockSpawner : MonoBehaviour
         if (saviors.Count == 0) saviors = GridManager.Instance.GetGapFillingShapes(allShapes);
         for (int i = 0; i < slots.Length; i++) { if (saviors.Count > 0) { BlockShapeSO shape = saviors[Random.Range(0, saviors.Count)]; SpawnOne(i, shape); } }
     }
-
+    private int GetShapeMass(BlockShapeSO shape)
+    {
+        if (shape == null) return 0;
+        var mat = shape.ToMatrix(); // .Trim() yapmıyoruz, orijinal veri yeterli
+        int count = 0;
+        foreach (var cell in mat)
+        {
+            if (cell) count++;
+        }
+        return count;
+    }
 #if UNITY_EDITOR
     [ContextMenu("Şekilleri Otomatik Sınıflandır")]
     public void AutoClassifyShapes()
