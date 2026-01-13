@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
+
 public partial class GridManager
 {
     private void OnDrawGizmos()
     {
         // Grid verisi yoksa (Editördeyken) geçici oluştur ki çizgileri görelim
-        if (_grid == null || _grid.GetLength(0) != width || _grid.GetLength(1) != height)
+        if (LevelGrid.Cells == null || LevelGrid.Cells.GetLength(0) != width || LevelGrid.Cells.GetLength(1) != height)
         {
             // Sadece çizim amaçlı
         }
@@ -27,7 +28,7 @@ public partial class GridManager
         }
 
         // 2. Dolu Hücreler (Sadece Play modunda çalışır)
-        if (Application.isPlaying && _grid != null)
+        if (Application.isPlaying && LevelGrid.Cells != null)
         {
             Gizmos.color = new Color(1, 0, 0, 0.3f); // Yarı saydam kırmızı
             Vector3 size = Vector3.one * (cellSize * 0.9f);
@@ -37,7 +38,7 @@ public partial class GridManager
             {
                 for(int y = 0; y < height; y++)
                 {
-                    if (_grid[x, y])
+                    if (LevelGrid.Cells[x, y])
                     {
                         Vector3 pos = transform.position + new Vector3(x * cellSize, y * cellSize, 0) + offset;
                         Gizmos.DrawCube(pos, size);

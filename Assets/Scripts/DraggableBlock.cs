@@ -10,21 +10,20 @@ public class DraggableBlock : MonoBehaviour
     private BlockData _currentData;
     private bool _isDragging;
     private Vector3 _startPosition;
-
+    
+    // Rengi burada tutuyoruz ve her yerde bunu kullanacağız
+    private BlockColorType _myColor;
+    
     [Header("Visual Settings")]
     public Transform visualRoot;
-    public VisualCell visualCellPrefab; // <--- TİP DEĞİŞTİ: GameObject yerine VisualCell
+    public VisualCell visualCellPrefab;
     
-    [Tooltip("Rastgele seçilecek renkler")]
-    public List<Sprite> blockSprites;
-
     [Header("Behavior Settings")]
     public float slotScale = 0.6f;     
     public float dragScale = 1.0f;     
     public float dragOffsetY = 1f;     
     public float moveDuration = 0.3f;  
 
-    // Oluşturulan hücreleri burada tutuyoruz
     private List<VisualCell> _spawnedCells = new List<VisualCell>();
 
     private PolygonCollider2D _col;
@@ -49,6 +48,10 @@ public class DraggableBlock : MonoBehaviour
         var matrix = so.ToMatrix().Trim();
         _currentData = new BlockData(matrix);
 
+        // 1. Rengi BURADA seçiyoruz ve _myColor değişkenine kaydediyoruz.
+        int colorCount = System.Enum.GetValues(typeof(BlockColorType)).Length;
+        _myColor = (BlockColorType)Random.Range(0, colorCount);
+
         RebuildVisual();
         RebuildCollider();
     }
@@ -57,23 +60,18 @@ public class DraggableBlock : MonoBehaviour
 
     void RebuildVisual()
     {
-        // 1. Eskileri temizle
         foreach (Transform c in visualRoot) Destroy(c.gameObject);
         _spawnedCells.Clear();
 
         if (_currentData == null) return;
 
-        // 2. Rastgele Sprite Seç
-        Sprite selectedSprite = null;
-        if (blockSprites != null && blockSprites.Count > 0)
-            selectedSprite = blockSprites[Random.Range(0, blockSprites.Count)];
+        // DÜZELTME: Burada tekrar rastgele renk üretmiyoruz!
+        // Initialize içinde seçilen _myColor'ı kullanıyoruz.
 
         float s = _grid.cellSize;
-        // Ortalamak için offset hesabı
         Vector3 offset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
         Vector3 halfCell = new Vector3(s / 2f, s / 2f, 0);
 
-        // 3. Hücreleri VisualCell scriptiyle oluştur
         for (int x = 0; x < _currentData.Width; x++)
         {
             for (int y = 0; y < _currentData.Height; y++)
@@ -81,22 +79,18 @@ public class DraggableBlock : MonoBehaviour
                 if (!_currentData.Matrix[x, y]) continue;
 
                 Vector3 pos = new Vector3(x * s, y * s, 0) + halfCell - offset;
-                
-                // Prefabı oluştur
                 VisualCell cell = Instantiate(visualCellPrefab, visualRoot);
                 cell.transform.localPosition = pos;
 
-                // Hücreyi Başlat (Initialize)
-                // Sorting Order'ı 10 yaptık, sen katmanına göre değiştirebilirsin.
-                cell.Initialize(selectedSprite, 10);
+                // DÜZELTME: Yerel 'randomColor' yerine sınıf değişkeni '_myColor' gönderildi.
+                // Böylece görünen renk ile grid'e giden renk aynı oldu.
+                cell.Initialize(_myColor, 10, VisualSpawnType.Spawned);
 
-                // Listeye ekle (Yönetmek için)
                 _spawnedCells.Add(cell);
             }
         }
     }
 
-    // --- YENİ COLLIDER OLUŞTURMA (Öncekiyle Aynı) ---
     void RebuildCollider()
     {
         if (_currentData == null) return;
@@ -121,7 +115,6 @@ public class DraggableBlock : MonoBehaviour
         if (_currentData == null) return;
         _isDragging = true;
         
-        // 1. Tüm hücrelere "Sürükleniyorsun" komutu ver
         foreach (var cell in _spawnedCells) cell.OnDragging();
 
         transform.DOKill();
@@ -137,13 +130,11 @@ public class DraggableBlock : MonoBehaviour
         mouse.z = 0; 
         transform.position = new Vector3(mouse.x, mouse.y, -5f) + new Vector3(0, dragOffsetY, 0);
 
-        // Ghost Gösterimi
-        Vector3 originPos = transform.position - visualRoot.localPosition; // Offset düzeltmesi gerekebilir, visualRoot local 0 ise sorun yok.
-        // Basitçe önceki logic:
+        // Ghost
+        Vector3 originPos = transform.position - visualRoot.localPosition;
         float s = _grid.cellSize;
         Vector3 centerOffset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
         Vector3 origin = transform.position - centerOffset;
-
         Vector3 snapFix = new Vector3(s / 2f, s / 2f, 0);
         Vector2Int cell = _grid.WorldToCell(origin + snapFix);
         
@@ -156,22 +147,29 @@ public class DraggableBlock : MonoBehaviour
         if (Input.GetMouseButtonUp(0))
         {
             _isDragging = false;
-            
+    
             if (canPlace)
             {
-                // 2. Tüm hücrelere "Bırakıldın" komutu ver
+                // BAŞARILI: Gride Yerleşti
                 foreach (var c in _spawnedCells) c.OnDrop();
 
-                _grid.PlacePiece(_currentData, cell.x, cell.y);
                 _ghost.Clear();
                 BlockSpawner.Instance.OnBlockPlaced(this);
+
+                // Rengi de gönderiyoruz (_myColor artık RebuildVisual'daki renkle aynı)
+                _grid.PlacePiece(_currentData, cell.x, cell.y, _myColor); 
+        
                 transform.DOKill(); 
-                Destroy(gameObject); // Veya animasyonla yok et
+                Destroy(gameObject); 
             }
             else
             {
-                // 3. Yerleşemedi, "Idle" moduna dön
-                foreach (var c in _spawnedCells) c.OnIdle();
+                // BAŞARISIZ: Yuvaya Dönüş
+                foreach (var c in _spawnedCells)
+                {
+                    c.OnDrop(); // Glow kapansın
+                    c.OnIdle(); // Normale dönsün
+                }
 
                 _ghost.Clear();
                 transform.DOMove(_startPosition, moveDuration).SetEase(Ease.OutBack);

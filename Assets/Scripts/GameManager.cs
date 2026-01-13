@@ -32,15 +32,13 @@ public class GameManager : Singleton<GameManager>
     // UI'daki "Reklamı İzle" butonu buna bağlanacak (Reklam başarıyla bitince)
     public void OnReviveSuccess()
     {
-        _hasUsedRevive = true; // Hakkını yedi
-        
+        _hasUsedRevive = true;
         Debug.Log("Reklam izlendi, oyun devam ediyor.");
-        
-        // BlockSpawner'a "Bana o özel 1x1'leri ver" diyoruz
-        BlockSpawner.Instance.SpawnReviveBlocks();
-        
-        // UI'ı kapat
-        //UIManager.Instance.HideReviveUI();
+
+        // YENİ: Hem güvenli blokları ver hem de WarmUp modunu 60sn aç.
+        BlockSpawner.Instance.ActivateReviveMode();
+
+        // UIManager.Instance.HideReviveUI();
     }
 
     // UI'daki "Hayır, İstemiyorum" butonu buna bağlanacak

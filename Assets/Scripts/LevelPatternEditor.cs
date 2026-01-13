@@ -1,105 +1,132 @@
-﻿#if UNITY_EDITOR
-
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 
 [CustomEditor(typeof(LevelPatternSO))]
 public class LevelPatternEditor : Editor
 {
+    // O an seçili olan boya rengi
+    private BlockColorType _selectedColor = BlockColorType.Red; 
+    
+    // Silgi modu açık mı?
+    private bool _isEraserMode = false;
+
     public override void OnInspectorGUI()
     {
-        // Hedef nesneyi al
         LevelPatternSO pattern = (LevelPatternSO)target;
 
-        // ScriptableObject güncellemelerini başlat
-        serializedObject.Update();
-
-        // Standart alanları çiz (Width, Height vs.)
-        DrawDefaultInspector();
-
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Grid Design Visualizer", EditorStyles.boldLabel);
-
-        // --- GÜVENLİK KONTROLLERİ ---
-        // Genişlik veya Yükseklik 1'den küçük olamaz
-        if (pattern.width < 1) pattern.width = 1;
-        if (pattern.height < 1) pattern.height = 1;
-
-        // Dizi boyutunu kontrol et ve gerekiyorsa güncelle
-        int totalCells = pattern.width * pattern.height;
-        if (pattern.cells == null || pattern.cells.Length != totalCells)
-        {
-            // Eğer dizi boyutu değişirse, veriyi kaybetmemek için Resize yapıyoruz
-            // (Not: Genişlik değişirse kaydırma olabilir, ama basit resize veriyi korur)
-            if (pattern.cells == null) pattern.cells = new bool[totalCells];
-            else System.Array.Resize(ref pattern.cells, totalCells);
-        }
-
-        // --- IZGARA ÇİZİMİ ---
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        // 1. Boyut Ayarları
+        EditorGUI.BeginChangeCheck();
+        pattern.width = EditorGUILayout.IntField("Width", pattern.width);
+        pattern.height = EditorGUILayout.IntField("Height", pattern.height);
         
-        // Buton stilleri
-        GUIStyle style = new GUIStyle(GUI.skin.button);
-        style.fixedWidth = 30;  // Tıklaması daha kolay olsun diye biraz büyüttüm
-        style.fixedHeight = 30;
-        style.margin = new RectOffset(2, 2, 2, 2);
-
-        // Y ekseni döngüsü (Yukarıdan aşağıya çizmek için ters döngü)
-        // Unity Koordinat Sistemi: (0,0) Sol Alt köşedir.
-        // Bu döngü, Y ekseninin en üstünü (pattern.height - 1) editörün en tepesine çizer.
-        // Böylece Editördeki görüntü ile Sahnedeki (Scene) görüntü eşleşir.
-        for (int y = pattern.height - 1; y >= 0; y--) 
+        if (EditorGUI.EndChangeCheck())
         {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace(); // Yatay ortalama
-
-            for (int x = 0; x < pattern.width; x++)
-            {
-                // Mevcut değeri güvenli bir şekilde al
-                bool currentValue = pattern.Get(x, y);
-                
-                // Renk ayarı: Dolu = Yeşil, Boş = Gri/Beyaz
-                GUI.backgroundColor = currentValue ? new Color(0.2f, 1f, 0.2f) : Color.white;
-
-                // Butonu çiz
-                if (GUILayout.Button("", style))
-                {
-                    // --- KRİTİK NOKTA: UNDO KAYDI ---
-                    // Değişiklik yapmadan önce Unity'nin Undo sistemine kaydet.
-                    // Bu işlem hem CTRL+Z ile geri almayı sağlar hem de "SetDirty" işlemini
-                    // Unity için en doğru şekilde yapar.
-                    Undo.RecordObject(pattern, "Toggle Grid Cell");
-
-                    // Değeri tersine çevir
-                    pattern.Set(x, y, !currentValue);
-
-                    // Değişikliği anında bildir
-                    EditorUtility.SetDirty(pattern);
-                }
-            }
-            
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.EndHorizontal();
-        }
-        
-        GUI.backgroundColor = Color.white; // Rengi sıfırla
-        EditorGUILayout.EndVertical();
-
-        EditorGUILayout.Space();
-
-        // --- TEMİZLEME BUTONU ---
-        if (GUILayout.Button("Clear Grid", GUILayout.Height(30)))
-        {
-            Undo.RecordObject(pattern, "Clear Grid"); // Undo kaydı
-            for (int i = 0; i < pattern.cells.Length; i++) 
-            {
-                pattern.cells[i] = false;
-            }
+            pattern.ValidateArrays();
             EditorUtility.SetDirty(pattern);
         }
 
-        // Değişiklikleri uygula
-        serializedObject.ApplyModifiedProperties();
+        GUILayout.Space(10);
+        GUILayout.Label("🎨 Boyama Paleti", EditorStyles.boldLabel);
+
+        // 2. Renk Seçim Butonları (Toolbar)
+        DrawColorPalette();
+
+        GUILayout.Space(10);
+
+        // 3. Grid Çizimi
+        DrawGrid(pattern);
+
+        // Kaydetme butonu (Gerçi Unity otomatik kaydeder ama garanti olsun)
+        if (GUILayout.Button("Force Save"))
+        {
+            EditorUtility.SetDirty(pattern);
+            AssetDatabase.SaveAssets();
+        }
+    }
+
+    void DrawColorPalette()
+    {
+        EditorGUILayout.BeginHorizontal();
+        
+        // Silgi Butonu
+        GUI.backgroundColor = _isEraserMode ? Color.gray : Color.white;
+        if (GUILayout.Button("Silgi", GUILayout.Height(30)))
+        {
+            _isEraserMode = true;
+        }
+
+        // Renk Butonları
+        foreach (BlockColorType colorType in System.Enum.GetValues(typeof(BlockColorType)))
+        {
+            // Buton rengini ayarla (Görsel temsil için)
+            GUI.backgroundColor = GetDebugColor(colorType);
+            
+            // Eğer seçiliyse isminin yanına tik koy
+            string btnName = colorType.ToString();
+            if (!_isEraserMode && _selectedColor == colorType) btnName = "✔ " + btnName;
+
+            if (GUILayout.Button(btnName, GUILayout.Height(30)))
+            {
+                _selectedColor = colorType;
+                _isEraserMode = false;
+            }
+        }
+        GUI.backgroundColor = Color.white; // Rengi resetle
+        EditorGUILayout.EndHorizontal();
+        
+        GUILayout.Label(_isEraserMode ? "Mod: SİLGİ" : $"Mod: BOYAMA ({_selectedColor})");
+    }
+
+    void DrawGrid(LevelPatternSO pattern)
+    {
+        pattern.ValidateArrays();
+
+        for (int y = pattern.height - 1; y >= 0; y--) // Y eksenini ters çevirdik ki aşağıdan yukarı çizmesin
+        {
+            EditorGUILayout.BeginHorizontal();
+            for (int x = 0; x < pattern.width; x++)
+            {
+                bool isActive = pattern.Get(x, y);
+                BlockColorType cellColor = pattern.GetColor(x, y);
+
+                // Eğer hücre doluysa o rengi göster, boşsa koyu gri yap
+                GUI.backgroundColor = isActive ? GetDebugColor(cellColor) : new Color(0.2f, 0.2f, 0.2f);
+
+                if (GUILayout.Button("", GUILayout.Width(30), GUILayout.Height(30)))
+                {
+                    Undo.RecordObject(pattern, "Paint Cell"); // Ctrl+Z desteği
+                    
+                    if (_isEraserMode)
+                    {
+                        pattern.ClearCell(x, y);
+                    }
+                    else
+                    {
+                        // Hem aktif et hem rengi ata
+                        pattern.Set(x, y, true, _selectedColor);
+                    }
+                    EditorUtility.SetDirty(pattern);
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+        }
+        GUI.backgroundColor = Color.white;
+    }
+
+    // Inspector'da butonların renkli görünmesi için basit bir çevirici
+    private Color GetDebugColor(BlockColorType type)
+    {
+        switch (type)
+        {
+            case BlockColorType.Red: return new Color(1f, 0.4f, 0.4f);
+            case BlockColorType.Blue: return new Color(0.4f, 0.6f, 1f);
+            case BlockColorType.Green: return new Color(0.4f, 1f, 0.4f);
+            case BlockColorType.Yellow: return Color.yellow;
+            case BlockColorType.Purple: return new Color(0.8f, 0.4f, 1f);
+            case BlockColorType.Cyan: return Color.cyan;
+            case BlockColorType.Orange: return new Color(1f, 0.6f, 0f);
+            case BlockColorType.Pink: return new Color(1f, 0.4f, 0.8f);
+            default: return Color.white;
+        }
     }
 }
-#endif

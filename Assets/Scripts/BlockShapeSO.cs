@@ -1,12 +1,32 @@
-﻿using UnityEditor;
-using UnityEngine;
+﻿using UnityEngine;
+
 [CreateAssetMenu(menuName = "Puzzle/Block Shape")]
 public class BlockShapeSO : ScriptableObject
 {
     public int width = 3;
     public int height = 3;
+    public bool[] cells; 
 
-    public bool[] cells; // width * height
+    // --- KRİTİK DÜZELTME ---
+    // [System.NonSerialized] etiketi, Unity'nin bu değişkeni kaydetmeye çalışmasını engeller.
+    // Eğer Unity bunu kaydederse, bool[,] desteklenmediği için Matrix null olur ve oyun çöker.
+    [System.NonSerialized]
+    private BlockData _cachedData;
+
+    // "Data" bir değişken değil, ÖZELLİK (Property) olmalı.
+    public BlockData Data 
+    {
+        get
+        {
+            // Eğer veri yoksa veya oyun yeniden başladıysa (null ise) oluştur.
+            if (_cachedData == null)
+            {
+                var matrix = ToMatrix().Trim();
+                _cachedData = new BlockData(matrix);
+            }
+            return _cachedData;
+        }
+    }
 
     public void Resize()
     {
@@ -14,82 +34,15 @@ public class BlockShapeSO : ScriptableObject
             cells = new bool[width * height];
     }
 
-    public bool Get(int x, int y)
-    {
-        return cells[y * width + x];
-    }
-
-    public void Set(int x, int y, bool value)
-    {
-        cells[y * width + x] = value;
-    }
+    public bool Get(int x, int y) => cells[y * width + x];
+    public void Set(int x, int y, bool value) => cells[y * width + x] = value;
     
     public bool[,] ToMatrix()
     {
         bool[,] matrix = new bool[width, height];
-
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
                 matrix[x, y] = cells[y * width + x];
-
         return matrix;
-    }
-    
-    // Veri erişimi için getter
-    public bool IsActive(int x, int y)
-    {
-        if (x < 0 || x >= width || y < 0 || y >= height) return false;
-        return cells[y * width + x];
-    }
-}
-
-[CustomEditor(typeof(BlockShapeSO))]
-public class BlockShapeSOEditor : Editor
-{
-    const int CELL_SIZE = 22;
-
-    public override void OnInspectorGUI()
-    {
-        BlockShapeSO shape = (BlockShapeSO)target;
-
-        EditorGUI.BeginChangeCheck();
-
-        shape.width = EditorGUILayout.IntField("Width", shape.width);
-        shape.height = EditorGUILayout.IntField("Height", shape.height);
-
-        shape.width = Mathf.Max(1, shape.width);
-        shape.height = Mathf.Max(1, shape.height);
-
-        shape.Resize();
-
-        GUILayout.Space(10);
-        DrawGrid(shape);
-
-        if (EditorGUI.EndChangeCheck())
-        {
-            EditorUtility.SetDirty(shape);
-        }
-    }
-
-    void DrawGrid(BlockShapeSO shape)
-    {
-        for (int y = 0; y < shape.height; y++)
-        {
-            EditorGUILayout.BeginHorizontal();
-            for (int x = 0; x < shape.width; x++)
-            {
-                bool value = shape.Get(x, y);
-                bool newValue = GUILayout.Toggle(
-                    value,
-                    GUIContent.none,
-                    GUILayout.Width(CELL_SIZE),
-                    GUILayout.Height(CELL_SIZE)
-                );
-
-                if (newValue != value)
-                    shape.Set(x, y, newValue);
-            }
-            EditorGUILayout.EndHorizontal();
-        }
     }
 }

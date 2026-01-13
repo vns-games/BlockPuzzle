@@ -9,9 +9,4 @@ public class BlockData
     {
         Matrix = matrix;
     }
-
-    public void UpdateMatrix(bool[,] newMatrix)
-    {
-        Matrix = newMatrix;
-    }
 }
