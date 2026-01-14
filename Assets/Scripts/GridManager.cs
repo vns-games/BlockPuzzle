@@ -1,7 +1,7 @@
 using UnityEngine;
 using VnS.Utility.Singleton;
+using System.Collections; // IEnumerator için gerekli
 using System.Collections.Generic;
-
 
 public partial class GridManager : Singleton<GridManager>
 {
@@ -9,22 +9,17 @@ public partial class GridManager : Singleton<GridManager>
     public int width = 8;
     public int height = 8;
     public float cellSize = 1f;
-    
+    public Transform visualRoot;
+
     [Header("Levels")]
     public List<LevelPatternSO> starterLevels;
 
-    // --- LAZY INITIALIZATION (RACE CONDITION FIX) ---
     private Grid _levelGrid;
-    public Grid LevelGrid 
-    { 
-        get 
+    public Grid LevelGrid
+    {
+        get
         {
-            // Eğer grid henüz oluşturulmadıysa, istendiği o saniye oluşturuyoruz.
-            // Böylece Awake sırası ne olursa olsun asla null gelmez.
-            if (_levelGrid == null)
-            {
-                _levelGrid = new Grid(width, height, cellSize);
-            }
+            if (_levelGrid == null) _levelGrid = new Grid(width, height, cellSize);
             return _levelGrid;
         }
     }
@@ -32,135 +27,160 @@ public partial class GridManager : Singleton<GridManager>
     protected override void Awake()
     {
         base.Awake();
-        // Isınma turu: Grid'in oluştuğundan emin oluyoruz.
-        var ensureCreated = LevelGrid; 
+        if (visualRoot == null) visualRoot = transform;
     }
 
-    void Start()
+    // --- DEĞİŞİKLİK 1: Initialize artık Coroutine başlatıyor ---
+    public void Initialize()
     {
+        // Direkt çağırmak yerine, Coroutine başlatıyoruz.
+        StartCoroutine(GenerateLevelRoutine());
+    }
+
+    // --- DEĞİŞİKLİK 2: Gecikmeli Oluşturucu ---
+    private IEnumerator GenerateLevelRoutine()
+    {
+        Debug.Log("GRID: Unity hazırlanıyor... 1 frame bekleniyor.");
+
+        // Unity'nin Render ve Fizik motorunun tam oturması için 1 frame bekle
+        yield return null;
+
+        // Garanti olsun diye bir frame daha bekle (Bazı ağır sahnelerde gerekir)
+        yield return null;
+
+        Debug.Log("GRID: Level oluşturuluyor...");
         GenerateInitialLevel();
     }
 
     public void GenerateInitialLevel()
     {
-        // 1. Temizlik (GridLogic Extension Metodu)
-        for(int x = 0; x < width; x++) 
-            for(int y = 0; y < height; y++) 
+        // 1. TEMİZLİK
+        StaticCellPool.ClearAllActive(LevelGrid.Visuals, width, height);
+
+        for(int x = 0; x < width; x++)
+            for(int y = 0; y < height; y++)
                 LevelGrid.ClearCell(x, y);
 
-        // 2. Level Desenini Yükle
-        if (starterLevels != null && starterLevels.Count > 0)
+        // 2. LEVEL SEÇİMİ VE KONTROLÜ
+        if (starterLevels == null || starterLevels.Count == 0)
         {
-            LevelPatternSO selectedLevel = starterLevels[Random.Range(0, starterLevels.Count)];
-            
-            // Veri dizilerinin sağlam olduğundan emin ol (Editör dışında da çalışması için)
-            selectedLevel.ValidateArrays(); 
+            Debug.LogError("HATA: Starter Levels listesi boş!");
+            return;
+        }
 
-            Debug.Log($"Seçilen Desen: {selectedLevel.name}");
+        LevelPatternSO selectedLevel = starterLevels[Random.Range(0, starterLevels.Count)];
+        selectedLevel.ValidateArrays();
 
-            for(int x = 0; x < width; x++)
+        Debug.Log($"SEÇİLEN LEVEL: {selectedLevel.name}");
+
+        int foundBlocks = 0;
+
+        // 3. OLUŞTURMA
+        for(int x = 0; x < width; x++)
+        {
+            for(int y = 0; y < height; y++)
             {
-                for(int y = 0; y < height; y++)
+                if (x < selectedLevel.width && y < selectedLevel.height)
                 {
-                    if (x < selectedLevel.width && y < selectedLevel.height)
+                    // Pattern verisinde "True" (Dolu) mu?
+                    if (selectedLevel.Get(x, y))
                     {
-                        if (selectedLevel.Get(x, y)) // Dolu mu?
-                        {
-                            LevelGrid.Cells[x, y] = true;
-                            
-                            // YENİ: Hücrenin kendine özel rengini al
-                            BlockColorType cellSpecificColor = selectedLevel.GetColor(x, y);
-                            
-                            // Level Pattern olduğu için VisualSpawnType.None (Sessiz)
-                            CreateVisual(x, y, cellSpecificColor, VisualSpawnType.None);
-                        }
+                        LevelGrid.Cells[x, y] = true;
+                        BlockColorType color = selectedLevel.GetColor(x, y);
+
+                        // Görseli oluştur
+                        CreateVisual(x, y, color, VisualSpawnType.None);
+
+                        foundBlocks++;
                     }
                 }
             }
         }
-        
-        // Başlangıçta hazır patlayacak satır varsa temizle (Puan vermeden)
-        LevelGrid.CheckAndClearMatches();
 
-        // Grid hazır, Spawner başlayabilir
-        BlockSpawner.Instance.StartGame();
+        Debug.Log($"LEVEL TAMAM. Toplam {foundBlocks} blok oluşturuldu.");
+
+        // Eğer foundBlocks 0 ise, sorun ScriptableObject verisindedir (İçi boştur).
+        if (foundBlocks == 0)
+        {
+            Debug.LogError("UYARI: Seçilen Level Pattern BOŞ! Inspector'da boyamayı unuttun mu?");
+        }
     }
 
-    // --- OYUNCU HAMLESİ (ON PLACED) ---
-    // DraggableBlock'tan çağrılır. Rengi ve veriyi alır.
     public void PlacePiece(BlockData data, int gx, int gy, BlockColorType colorType)
     {
-        for (int x = 0; x < data.Width; x++)
+        if (ScoreManager.Instance) ScoreManager.Instance.RegisterMove();
+
+        for(int x = 0; x < data.Width; x++)
         {
-            for (int y = 0; y < data.Height; y++)
+            for(int y = 0; y < data.Height; y++)
             {
                 if (!data.Matrix[x, y]) continue;
-                
-                // Mantıksal gridi güncelle
-                LevelGrid.Cells[gx + x, gy + y] = true;
 
-                // Görseli oluştur.
-                // TİP: PLACED (Oyuncu koydu, toz/sarsıntı efekti oynasın)
-                CreateVisual(gx + x, gy + y, colorType, VisualSpawnType.Placed);
+                int targetX = gx + x;
+                int targetY = gy + y;
+
+                LevelGrid.Cells[targetX, targetY] = true;
+                CreateVisual(targetX, targetY, colorType, VisualSpawnType.Placed);
             }
         }
 
-        // Patlama Kontrolü (GridLogic Extension Metodu)
-        int cleared = LevelGrid.CheckAndClearMatches();
-        
-        // Eğer satır silindiyse WarmUp süresini uzat
-        if (cleared > 0)
+        int totalBlocksPopped = LevelGrid.CheckAndClearMatches();
+
+        if (totalBlocksPopped > 0)
         {
-            BlockSpawner.Instance.ExtendWarmUp(cleared * 5f);
+            // SKOR YÖNETİCİSİNE GÖNDER
+            if (ScoreManager.Instance) ScoreManager.Instance.OnBlast(totalBlocksPopped);
+
+            // ZORLUK/WARMUP AYARI
+            // Spawner hala "Satır" mantığıyla çalışıyorsa tahmini satır sayısını gönder
+            // Örn: 8 kare 1 satırsa -> total / 8
+            if (BlockSpawner.Instance)
+            {
+                int estimatedLines = Mathf.Max(1, totalBlocksPopped / width);
+                BlockSpawner.Instance.OnLinesCleared(estimatedLines);
+            }
         }
     }
 
-    // --- GÖRSEL OLUŞTURUCU (MERKEZİ METOD) ---
     private void CreateVisual(int x, int y, BlockColorType colorType, VisualSpawnType spawnType)
     {
-        // Zaten görsel varsa tekrar oluşturma
-        if (LevelGrid.Visuals[x, y] != null) return;
-
-        // Havuzdan obje çek
-        GameObject visObj = CellVisualPool.Instance.Get();
-        visObj.transform.position = CellToWorld(x, y);
-
-        // VisualCell ayarlarını yap
-        VisualCell cell = visObj.GetComponent<VisualCell>();
-        if (cell != null)
+        // Eski görsel temizliği
+        if (LevelGrid.Visuals[x, y] != null)
         {
-            // Tipi parametre olarak gönderiyoruz, Initialize içinde switch-case ile karar veriyor.
-            // 5 sorting order gridin zemininden yüksekte durmasını sağlar.
-            cell.Initialize(colorType, 5, spawnType); 
+            VisualCell oldCell = LevelGrid.Visuals[x, y].GetComponent<VisualCell>();
+            StaticCellPool.Despawn(oldCell);
+            LevelGrid.Visuals[x, y] = null;
         }
 
-        // Görseli gride kaydet
-        LevelGrid.Visuals[x, y] = visObj;
+        // POZİSYON HESABI
+        Vector3 worldPos = CellToWorld(x, y);
+        worldPos.z = -2f; // Öne al
+
+        // OLUŞTURMA
+        VisualCell cell = StaticCellPool.Spawn(worldPos, visualRoot);
+
+        if (cell != null)
+        {
+            // Sigorta: VisualRoot'un Scale değeri bozuksa düzeltir
+            if (visualRoot.localScale == Vector3.zero) visualRoot.localScale = Vector3.one;
+
+            cell.Initialize(colorType, 10, spawnType);
+            LevelGrid.Visuals[x, y] = cell.gameObject;
+        }
     }
 
-    // --- WRAPPERS (ShapeFinder ve GridLogic Köprüleri) ---
-    // Spawner bu fonksiyonları çağırarak analiz yapar.
-    
-    public List<BlockShapeSO> GetBestComboShapes(List<BlockShapeSO> c, out int max) => ShapeFinder.GetComboShapes(LevelGrid, c, out max);
-    public List<BlockShapeSO> GetHoleFillingShapes(List<BlockShapeSO> c, float t) => ShapeFinder.GetHoleFillers(LevelGrid, c, t);
-    public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> c) => ShapeFinder.GetFits(LevelGrid, c);
-    
-    public List<BlockShapeSO> GetTotalClearShapes(List<BlockShapeSO> c) 
-    {
-        // TotalClear şimdilik boş, ileride ShapeFinder'a eklenebilir.
-        return new List<BlockShapeSO>(); 
-    }
-
-    // GridLogic extension metodlarına erişim
-    public bool CanPlace(BlockData d, int x, int y) => LevelGrid.CanPlace(d, x, y);
-    public bool CanFitAnywhere(BlockData d) => LevelGrid.CanFitAnywhere(d);
-    public float GetFillPercentage() => LevelGrid.GetFillPercentage();
-
-    // Koordinat Dönüşümleri
+    // --- WRAPPERS ---
     public Vector2Int WorldToCell(Vector3 wp)
     {
         Vector3 l = wp - transform.position;
         return new Vector2Int(Mathf.FloorToInt(l.x / cellSize), Mathf.FloorToInt(l.y / cellSize));
     }
     public Vector3 CellToWorld(int x, int y) => transform.position + new Vector3((x + 0.5f) * cellSize, (y + 0.5f) * cellSize, 0);
+
+    // GridLogic bağlantıları...
+    public List<BlockShapeSO> GetHoleFillingShapes(List<BlockShapeSO> c, float t) => ShapeFinder.GetHoleFillers(LevelGrid, c, t);
+    public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> c) => ShapeFinder.GetFits(LevelGrid, c);
+    public bool CanPlace(BlockData d, int x, int y) => LevelGrid.CanPlace(d, x, y);
+    public bool CanFitAnywhere(BlockData d) => LevelGrid.CanFitAnywhere(d);
+    public float GetFillPercentage() => LevelGrid.GetFillPercentage();
 }

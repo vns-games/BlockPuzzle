@@ -44,8 +44,7 @@ public static class GridLogic
     {
         if (!grid.IsInside(x, y)) return;
 
-        // A) Mantıksal Veriyi Sil
-        if (!grid.Cells[x, y]) return; // Zaten boşsa işlem yapma (Opsiyonel optimizasyon)
+        // A) Mantıksal Veriyi Sil (Her durumda false yap, kontrol etme)
         grid.Cells[x, y] = false;
 
         // B) Görseli Havuza Gönder
@@ -53,12 +52,16 @@ public static class GridLogic
         {
             if (CellVisualPool.Instance != null)
             {
+                // Havuza iade et
                 CellVisualPool.Instance.Release(grid.Visuals[x, y]);
             }
             else
             {
-                GameObject.Destroy(grid.Visuals[x, y]); // Pool yoksa yok et (Güvenlik)
+                // Eğer oyun kapanıyorsa ve Pool yok olduysa mecburen Destroy
+                Object.Destroy(grid.Visuals[x, y]); 
             }
+        
+            // Referansı kopar
             grid.Visuals[x, y] = null;
         }
     }
@@ -66,36 +69,96 @@ public static class GridLogic
     // Satır ve Sütunları tarar, temizler ve temizlenen sayıyı döner
     public static int CheckAndClearMatches(this Grid grid)
     {
-        List<int> rows = new List<int>();
-        List<int> cols = new List<int>();
+        List<int> rowsToClear = new List<int>();
+        List<int> colsToClear = new List<int>();
 
-        // 1. Dolu Satırları Bul
+        // 1. DOLU SATIRLARI TESPİT ET
         for (int y = 0; y < grid.Height; y++)
         {
             bool full = true;
-            for (int x = 0; x < grid.Width; x++) if (!grid.Cells[x, y]) { full = false; break; }
-            if (full) rows.Add(y);
+            for (int x = 0; x < grid.Width; x++)
+            {
+                if (!grid.Cells[x, y]) 
+                { 
+                    full = false; 
+                    break; 
+                }
+            }
+            if (full) rowsToClear.Add(y);
         }
 
-        // 2. Dolu Sütunları Bul
+        // 2. DOLU SÜTUNLARI TESPİT ET
         for (int x = 0; x < grid.Width; x++)
         {
             bool full = true;
-            for (int y = 0; y < grid.Height; y++) if (!grid.Cells[x, y]) { full = false; break; }
-            if (full) cols.Add(x);
+            for (int y = 0; y < grid.Height; y++)
+            {
+                if (!grid.Cells[x, y]) 
+                { 
+                    full = false; 
+                    break; 
+                }
+            }
+            if (full) colsToClear.Add(x);
         }
 
-        // 3. Temizle
-        int totalCleared = rows.Count + cols.Count;
-        if (totalCleared > 0)
+        // Eğer patlayan yoksa 0 dön ve çık
+        if (rowsToClear.Count == 0 && colsToClear.Count == 0) return 0;
+
+        // 3. SİLİNECEK KARELERİ İŞARETLE (Duplicate önleme)
+        // Kesişen satır ve sütunlardaki blokları iki kere silmeye çalışmamak için
+        // önce "Silinecekler Listesi" (bool array) oluşturuyoruz.
+        bool[][] blocksToRemove = new bool[grid.Width][];
+        for(int index = 0; index < grid.Width; index++)
         {
-            foreach (var r in rows) grid.ClearRow(r);
-            foreach (var c in cols) grid.ClearColumn(c);
+            blocksToRemove[index] = new bool[grid.Height];
         }
 
-        return totalCleared;
-    }
+        foreach (int y in rowsToClear)
+            for (int x = 0; x < grid.Width; x++) blocksToRemove[x][y] = true;
 
+        foreach (int x in colsToClear)
+            for (int y = 0; y < grid.Height; y++) blocksToRemove[x][y] = true;
+
+        // 4. TEMİZLİK VE SAYIM İŞLEMİ
+        int uniqueBlocksCleared = 0;
+
+        for (int x = 0; x < grid.Width; x++)
+        {
+            for (int y = 0; y < grid.Height; y++)
+            {
+                // Bu kare silinecekler listesinde mi?
+                if (blocksToRemove[x][y])
+                {
+                    // Kare gerçekten doluysa işlem yap (Boş hücreyi sayma)
+                    if (grid.Cells[x, y])
+                    {
+                        // A) Sayacı artır
+                        uniqueBlocksCleared++;
+
+                        // B) Mantıksal veriyi sil
+                        grid.Cells[x, y] = false;
+
+                        // C) Görsel veriyi sil (Havuza iade et)
+                        if (grid.Visuals[x, y] != null)
+                        {
+                            // GameObject üzerinden VisualCell scriptini al
+                            VisualCell cell = grid.Visuals[x, y].GetComponent<VisualCell>();
+                            
+                            // Statik havuza geri gönder
+                            StaticCellPool.Despawn(cell);
+                            
+                            // Referansı temizle
+                            grid.Visuals[x, y] = null;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Toplam silinen kare sayısını dön (Skor için)
+        return uniqueBlocksCleared;
+    }
     // Yardımcı: Tüm satırı sil
     public static void ClearRow(this Grid grid, int y)
     {

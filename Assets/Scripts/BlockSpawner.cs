@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using VnS.Utility.Singleton;
 
@@ -6,7 +7,7 @@ public enum SpawnerMode
 {
     None,
     Relax,
-    WarmUp,         // Öncelik: MegaKill -> BigFit -> CleanKill -> AnyFit
+    WarmUp, // Öncelik: MegaKill -> BigFit -> CleanKill -> AnyFit
     Critical,
     SmartHelp,
     SkillBased
@@ -23,48 +24,86 @@ public class BlockSpawner : Singleton<BlockSpawner>
 
     [Header("Settings")]
     public float criticalThreshold = 0.85f;
-    public Vector2 warmUpRange = new Vector2(120f, 180f);
 
-    // State
-    private float _warmUpDuration;
-    private float _gameStartTime;
+    [Header("Dynamic Difficulty (Session Based)")]
+    // Eşiğin başlayacağı aralık (Örn: 0.85 ile 0.95 arası rastgele bir değer seçilir)
+    public Vector2 startThresholdRange = new Vector2(0.85f, 0.95f);
+
+    // Eşiğin en son düşeceği taban değer (Oyun oturduktan sonraki zorluk)
+    public float minThreshold = 0.45f;
+
+    // Isınma sürecinin kaç hamle süreceği (Örn: 20 ile 40 hamle arası rastgele)
+    public Vector2Int warmUpMovesRange = new Vector2Int(20, 40);
+
+    // STATE (Durum Değişkenleri)
+    private int _totalMovesPlayed = 0;      // Toplam oynanan el sayısı
+    private int _targetWarmUpMoves;         // Bu oyun için belirlenen hedef ısınma süresi (hamle cinsinden)
+    private float _currentStartThreshold;   // Bu oyun için belirlenen başlangıç zorluğu
+
     private SpawnerMode _currentMode = SpawnerMode.None;
     private List<DraggableBlock> _activeBlocks = new();
-
+    [Header("Reward Settings")]
+    [Tooltip("Her patlatılan satır başına zorluk ne kadar ötelenecek? (Örn: 2 hamle)")]
+    public int rewardMovesPerLine = 2; // "1 ileri 2 geri" mantığı için burayı 2 yapabilirsin.
     public void StartGame()
     {
-        _gameStartTime = Time.time;
         _currentMode = SpawnerMode.None;
-        
-        _warmUpDuration = Random.Range(warmUpRange.x, warmUpRange.y);
-        Debug.Log($"<color=cyan>[SESSION]</color> İlk Isınma Süresi: {_warmUpDuration / 60f:F1}dk");
+        _totalMovesPlayed = 0;
+
+        // --- RASTGELE SESSION KURULUMU ---
+        // 1. Bu maçın zorluk başlangıcını belirle (Örn: 0.92 geldi)
+        _currentStartThreshold = Random.Range(startThresholdRange.x, startThresholdRange.y);
+
+        // 2. Bu maçın ısınma süresini belirle (Örn: 35 hamle sürecek)
+        _targetWarmUpMoves = Random.Range(warmUpMovesRange.x, warmUpMovesRange.y);
+
+        Debug.Log($"<color=cyan>[SESSION]</color> Hamle Hedefi: {_targetWarmUpMoves} | Başlangıç Zorluğu: {_currentStartThreshold:F2}");
 
         SpawnSet();
     }
-    
-    // --- YENİ EKLENEN: REVIVE WARMUP ---
+
+    // --- REVIVE GÜNCELLEMESİ ---
     public void ActivateReviveMode()
     {
-        // Şu anki geçen süreye 60 saniye ekleyerek Isınma limitini ileri atıyoruz.
-        float timeElapsed = Time.time - _gameStartTime;
-        _warmUpDuration = timeElapsed + 60f; 
-        
-        Debug.Log($"<color=green><b>[REVIVE] 60 Saniye WarmUp Modu Aktif Edildi!</b></color>");
+        // Oyuncuya ekstra 20 hamlelik bir "Isınma" kredisi veriyoruz.
+        // Bu, GetDynamicThreshold hesaplamasındaki progress oranını düşürür ve
+        // eşiği tekrar yukarı (0.80 - 0.90 seviyelerine) çeker.
+        int extraMoves = 20;
+        _targetWarmUpMoves = _totalMovesPlayed + extraMoves;
+
+        Debug.Log($"<color=green><b>[REVIVE] {extraMoves} Ekstra Hamle Eklendi! Zorluk Resetlendi.</b></color>");
 
         // Oyuncuyu hemen rahatlatmak için güvenli blokları spawnla
         SpawnReviveBlocks();
     }
-    // ------------------------------------
 
-    public void ExtendWarmUp(float seconds) => _warmUpDuration += seconds;
-
-    
-
-    private SpawnerMode DetermineMode(float fill, float time)
+    // --- HAMLE BAZLI DİNAMİK EŞİK ---
+    private float GetDynamicThreshold()
     {
+        // Eğer hedef ısınma hamlesini geçtiysek direkt en düşük (en zor/rastgele) zorluğu döndür
+        if (_totalMovesPlayed >= _targetWarmUpMoves) return minThreshold;
+
+        // İlerleme oranı (0.0 ile 1.0 arası)
+        // 0.0: Oyun başı (Çok Seçici)
+        // 1.0: Isınma bitti (Daha Rastgele)
+        float progress = (float)_totalMovesPlayed / (float)_targetWarmUpMoves;
+
+        // Başlangıç zorluğundan (örn 0.90), min zorluğa (0.45) doğru kay
+        return Mathf.Lerp(_currentStartThreshold, minThreshold, progress);
+    }
+
+    private SpawnerMode DetermineMode(float fill)
+    {
+        // Doluluk %15 altındaysa her zaman Relax
         if (fill < 0.15f) return SpawnerMode.Relax;
-        if (time < _warmUpDuration) return SpawnerMode.WarmUp;
+
+        // Doluluk kritik seviyeyi geçtiyse Critical
         if (fill > criticalThreshold) return SpawnerMode.Critical;
+
+        // Isınma hamlesi henüz bitmediyse WarmUp
+        if (_totalMovesPlayed < _targetWarmUpMoves) return SpawnerMode.WarmUp;
+
+        // Diğer durumlar
         if (fill > 0.5f) return SpawnerMode.SmartHelp;
         return SpawnerMode.SkillBased;
     }
@@ -76,71 +115,59 @@ public class BlockSpawner : Singleton<BlockSpawner>
             case SpawnerMode.Relax:
                 return GetRelaxPool(grid);
             case SpawnerMode.WarmUp:
-                return GetWarmUpPool(grid); // <-- LOGLAR BURADA
+                return GetWarmUpPool(grid); // <-- DİNAMİK EŞİK BURADA KULLANILIYOR
             case SpawnerMode.Critical:
                 return ShapeFinder.GetFits(grid, easyShapes);
             case SpawnerMode.SmartHelp:
                 return ShapeFinder.GetHoleFillers(grid, allShapes, 0.7f);
-            default: 
+            default:
                 return ShapeFinder.GetFits(grid, allShapes);
         }
     }
 
     private List<BlockShapeSO> GetWarmUpPool(Grid grid)
     {
-        // ARTIK AYRIM YOK! TÜM ENVANTERİ TARA.
-        // Manuel listeler (cleanShapes vs.) yerine direkt allShapes kullanıyoruz.
-        // Böylece "Unutulmuş parça" veya "Listeye eklenmemiş parça" derdi bitiyor.
         List<BlockShapeSO> allCandidates = new List<BlockShapeSO>(allShapes);
 
-        // --- 1. ÖNCELİK: MEGA KILL (3+ Satır/Sütun) ---
-        // "Şov yapacak parça var mı?"
+        // 1. MEGA KILL (Ödül her zaman önceliklidir, değişmez)
         var megaKillers = ShapeFinder.GetMegaKillers(grid, allCandidates);
         if (megaKillers.Count > 0)
         {
-            Debug.Log($"[WARMUP KARAR] <color=green><b>1. MEGA KILL</b></color> - Envanterden Şov Parçası Bulundu.");
+            // Debug.Log($"[WARMUP KARAR] <color=green><b>1. MEGA KILL</b></color>");
             return megaKillers;
         }
 
-        // --- 2. ÖNCELİK: BÜYÜK VE MÜKEMMEL UYUM (TETRIS HİSSİ) ---
-        // "Büyük bir boşluğa 'cuk' diye oturan var mı?"
-        // Not: Burada 1x1'leri elemek için ShapeFinder içinde kütle kontrolü var (Mass >= 3 veya 4)
-        var perfectFits = ShapeFinder.GetLargePerfectFits(grid, allCandidates, 0.45f); // Eşik %60 temas
+        // --- DİNAMİK HAMLE BAZLI EŞİK ---
+        float dynamicThreshold = GetDynamicThreshold();
+
+        // Debug.Log($"[HAMLE: {_totalMovesPlayed}/{_targetWarmUpMoves}] Eşik: {dynamicThreshold:F2}");
+
+        var perfectFits = ShapeFinder.GetLargePerfectFits(grid, allCandidates, dynamicThreshold);
+
         if (perfectFits.Count > 0)
         {
-            Debug.Log($"[WARMUP KARAR] <color=cyan><b>2. MÜKEMMEL UYUM</b></color> - Tetris gibi oturan parça.");
+            // Debug.Log($"[WARMUP KARAR] <color=cyan><b>2. MÜKEMMEL UYUM</b></color> (Eşik: {dynamicThreshold:F2})");
             return perfectFits;
         }
 
-        // --- 3. ÖNCELİK: TEMİZ PATLATMA ---
-        // "Ortalığı kirletmeden 1-2 satır alacak var mı?"
-        var cleanKillers = ShapeFinder.GetCleanKillers(grid, allCandidates);
-        if (cleanKillers.Count > 0)
-        {
-            Debug.Log($"[WARMUP KARAR] <color=yellow><b>3. TEMİZ PATLATMA</b></color> - Temiz işçilik.");
-            return cleanKillers;
-        }
-
-        // --- 4. ÖNCELİK: KİLİT AÇMA (HOLE FILLER) ---
-        // "Küçük delikleri, tekli boşlukları kapatacak var mı?"
-        // Eşik değerini biraz düşürdük (0.6f) ki kenardaki boşlukları da yakalasın.
-        var keys = ShapeFinder.GetHoleFillers(grid, allCandidates, 0.60f);
+        // Hole Filler (Kilit Açma)
+        // Eşiğin biraz altını kabul et (Örn: Eşik 0.8 ise bu 0.65 kabul etsin)
+        var keys = ShapeFinder.GetHoleFillers(grid, allCandidates, dynamicThreshold - 0.15f);
         if (keys.Count > 0)
         {
-            Debug.Log($"[WARMUP KARAR] <color=magenta><b>4. KİLİT AÇMA</b></color> - Boşluk doldurma.");
+            // Debug.Log($"[WARMUP KARAR] <color=magenta><b>4. KİLİT AÇMA</b></color>");
             return keys;
         }
         
-        // --- 5. ÖNCELİK: HAYATTA KALMA ---
-        // "Hiçbiri olmuyor, bari sığan bir şey ver de oyun bitmesin."
-        var fits = ShapeFinder.GetFits(grid, allCandidates);
-        if (fits.Count > 0)
-        {
-            Debug.Log($"[WARMUP KARAR] <color=white><b>5. RASTGELE SIĞAN</b></color> - Mecburiyet.");
-            return fits;
-        }
+        // Clean Kill (Temiz Patlatma)
+        var cleanKillers = ShapeFinder.GetCleanKillers(grid, allCandidates);
+        if (cleanKillers.Count > 0) return cleanKillers;
 
-        Debug.Log($"[WARMUP KARAR] <color=red><b>ACİL DURUM</b></color> - Sığan parça yok, küçükleri dene.");
+        // Rastgele Sığanlar
+        var fits = ShapeFinder.GetFits(grid, allCandidates);
+        if (fits.Count > 0) return fits;
+
+        // Acil Durum
         return ShapeFinder.GetFits(grid, easyShapes);
     }
 
@@ -151,11 +178,9 @@ public class BlockSpawner : Singleton<BlockSpawner>
         if (primary == null || primary.Count == 0) return batch;
 
         List<BlockShapeSO> pool = new List<BlockShapeSO>(primary);
-        
-        // Havuzda yeterince eleman yoksa mecburen yedeğe (tüm şekillere) başvur
+
         if (pool.Count < count) pool.AddRange(allShapes);
 
-        // Karıştır
         for (int i = 0; i < pool.Count; i++)
         {
             var temp = pool[i];
@@ -164,163 +189,16 @@ public class BlockSpawner : Singleton<BlockSpawner>
             pool[rnd] = temp;
         }
 
-        // Seç (Aynı şekli 2 kere seçme)
         HashSet<BlockShapeSO> selected = new HashSet<BlockShapeSO>();
         foreach (var s in pool)
         {
             if (batch.Count >= count) break;
             if (selected.Add(s)) batch.Add(s);
         }
-        
-        // Hala eksikse (çok nadir), rastgele doldur
-        while(batch.Count < count) batch.Add(easyShapes[0]);
+
+        while (batch.Count < count) batch.Add(easyShapes[0]);
 
         return batch;
-    }
-
-    // --- YARDIMCILAR ---
-    private List<BlockShapeSO> GetRelaxPool(Grid grid)
-    {
-        var p = new List<BlockShapeSO>(bigShapes); 
-        p.AddRange(cleanShapes);
-        var f = ShapeFinder.GetFits(grid, p);
-        return f.Count > 0 ? f : ShapeFinder.GetFits(grid, allShapes);
-    }
-
-    private void LogModeChange(SpawnerMode newMode, float fill)
-    {
-        if (_currentMode == SpawnerMode.WarmUp && newMode != SpawnerMode.WarmUp)
-            Debug.Log($"<color=red>=== ISINMA SÜRESİ DOLDU ===</color>");
-        
-        if (_currentMode != newMode)
-        {
-            _currentMode = newMode;
-            // Debug.Log($"[MOD DEĞİŞTİ]: {newMode}");
-        }
-    }
-
-    public void SpawnReviveBlocks()
-    {
-        ClearActiveBlocks();
-        var saviors = GridManager.Instance.GetGapFillingShapes(easyShapes);
-        if (saviors.Count == 0) saviors = GridManager.Instance.GetGapFillingShapes(allShapes);
-
-        List<BlockShapeSO> batch = new List<BlockShapeSO>();
-        for (int i = 0; i < slots.Length; i++)
-            if (saviors.Count > 0) batch.Add(saviors[Random.Range(0, saviors.Count)]);
-        
-        for(int i=0; i<batch.Count; i++)
-        {
-            var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
-            b.Initialize(batch[i]);
-            _activeBlocks.Add(b);
-        }
-    }
-    
-    public void SpawnSet()
-    {
-        // 1. Temizlik
-        foreach(var b in _activeBlocks) if(b) Destroy(b.gameObject);
-        _activeBlocks.Clear();
-
-        Grid grid = GridManager.Instance.LevelGrid;
-        float fill = grid.GetFillPercentage();
-        float timeElapsed = Time.time - _gameStartTime;
-
-        // 2. Modu Belirle
-        SpawnerMode calculatedMode = DetermineMode(fill, timeElapsed);
-        LogModeChange(calculatedMode, fill);
-
-        // 3. HAVUZLARI HAZIRLA (Burada değişiklik var)
-        
-        // A) Birincil Havuz (Stratejik Havuz - Zaten filtrelenmiş gelir)
-        List<BlockShapeSO> primaryPool = GetPoolForMode(calculatedMode, grid);
-
-        // B) İkincil Havuz (Yedek - Doldurma)
-        // HATA BURADAYDI: Eskiden direkt 'cleanShapes' veriyorduk, sığıp sığmadığına bakmıyorduk.
-        // ŞİMDİ: Yedek havuzu da 'GetFits' ile süzüyoruz.
-        List<BlockShapeSO> secondaryRaw = (calculatedMode == SpawnerMode.Relax || calculatedMode == SpawnerMode.WarmUp) 
-                                           ? cleanShapes : allShapes;
-        
-        // WarmUp modundaysak YEDEKLERİN DE kesin sığması şart. Diğer modlarda da güvenli olsun.
-        List<BlockShapeSO> secondaryPool = ShapeFinder.GetFits(grid, secondaryRaw);
-
-        // 4. BENZERSİZ KARIŞIM OLUŞTUR
-        // Eğer ikincil havuz bile boşsa (çok sıkışıksa), ShapeFinder.GetFits(allShapes) devreye girecek (Batch içinde).
-        List<BlockShapeSO> batch = GenerateUniqueBatch(grid, primaryPool, secondaryPool, slots.Length);
-
-        // 5. Spawn
-        for(int i=0; i<batch.Count; i++)
-        {
-            var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
-            b.Initialize(batch[i]);
-            _activeBlocks.Add(b);
-        }
-        
-        CheckGameOver();
-    }
-
-    // --- BENZERSİZ VE GARANTİLİ KARIŞIM ---
-    private List<BlockShapeSO> GenerateUniqueBatch(Grid grid, List<BlockShapeSO> primary, List<BlockShapeSO> secondary, int count)
-    {
-        HashSet<BlockShapeSO> selectedSet = new HashSet<BlockShapeSO>();
-        List<BlockShapeSO> finalBatch = new List<BlockShapeSO>();
-
-        // Yerel Yardımcı Fonksiyon: Listeden rastgele al, sığıyorsa ekle
-        void TryFillFrom(List<BlockShapeSO> sourceList)
-        {
-            if (sourceList == null || sourceList.Count == 0) return;
-            if (finalBatch.Count >= count) return;
-
-            // Listeyi karıştır
-            List<BlockShapeSO> shuffled = new List<BlockShapeSO>(sourceList);
-            ShuffleList(shuffled);
-
-            foreach (var shape in shuffled)
-            {
-                if (finalBatch.Count >= count) break;
-                
-                // Zaten seçildiyse geç
-                if (selectedSet.Contains(shape)) continue;
-
-                // --- EKSTRA GÜVENLİK ---
-                // Primary zaten süzülmüş geliyor ama Secondary veya AllShapes'ten gelenleri
-                // son bir kez daha grid kontrolünden geçirmek %100 garanti sağlar.
-                // (Performans için; zaten süzülmüş listelerde bu adımı atlayabilirsin ama WarmUp için değer)
-                if (GridManager.Instance.CanFitAnywhere(new BlockData(shape.ToMatrix().Trim())))
-                {
-                    selectedSet.Add(shape);
-                    finalBatch.Add(shape);
-                }
-            }
-        }
-
-        // 1. Aşama: Strateji Havuzu (Örn: Mega Kill)
-        TryFillFrom(primary);
-
-        // 2. Aşama: Yedek Havuz (Örn: Temiz Parçalar)
-        TryFillFrom(secondary);
-
-        // 3. Aşama: Hala eksikse "Sığan Herhangi Bir Şey" (All Shapes Fits)
-        if (finalBatch.Count < count)
-        {
-            var allFits = ShapeFinder.GetFits(grid, allShapes);
-            TryFillFrom(allFits);
-        }
-
-        // 4. Aşama: ÇOK ACİL DURUM (Hala eksikse 1x1 Kurtarıcılar)
-        if (finalBatch.Count < count)
-        {
-            var easyFits = ShapeFinder.GetFits(grid, easyShapes);
-            // Burada artık set kontrolü yapmadan doldur, çünkü slot boş kalmamalı
-            while (finalBatch.Count < count && easyFits.Count > 0)
-            {
-                var s = easyFits[Random.Range(0, easyFits.Count)];
-                finalBatch.Add(s);
-            }
-        }
-
-        return finalBatch;
     }
 
     private void ShuffleList<T>(List<T> list)
@@ -333,9 +211,183 @@ public class BlockSpawner : Singleton<BlockSpawner>
             list[randomIndex] = temp;
         }
     }
-    
-    // Standart fonksiyonlar...
-    public void OnBlockPlaced(DraggableBlock b) { _activeBlocks.Remove(b); if(_activeBlocks.Count==0) SpawnSet(); else CheckGameOver(); }
-    private void CheckGameOver() { if(_activeBlocks.Count==0){GameManager.Instance.TriggerGameOver(); return;} foreach(var b in _activeBlocks) if(GridManager.Instance.CanFitAnywhere(b.GetData())) return; GameManager.Instance.TriggerGameOver(); }
-    private void ClearActiveBlocks() { foreach(var b in _activeBlocks) if(b) Destroy(b.gameObject); _activeBlocks.Clear(); }
+
+    // --- YARDIMCILAR ---
+    private List<BlockShapeSO> GetRelaxPool(Grid grid)
+    {
+        var p = new List<BlockShapeSO>(bigShapes);
+        p.AddRange(cleanShapes);
+        var f = ShapeFinder.GetFits(grid, p);
+        return f.Count > 0 ? f : ShapeFinder.GetFits(grid, allShapes);
+    }
+
+    private void LogModeChange(SpawnerMode newMode, float fill)
+    {
+        if (_currentMode == SpawnerMode.WarmUp && newMode != SpawnerMode.WarmUp)
+            Debug.Log($"<color=red>=== ISINMA SÜRESİ DOLDU (Hamle Hedefi: {_targetWarmUpMoves} ulaşıldı) ===</color>");
+
+        if (_currentMode != newMode)
+        {
+            _currentMode = newMode;
+        }
+    }
+
+    public void SpawnReviveBlocks()
+    {
+        ClearActiveBlocks();
+        var saviors = GridManager.Instance.GetGapFillingShapes(easyShapes);
+        if (saviors.Count == 0) saviors = GridManager.Instance.GetGapFillingShapes(allShapes);
+
+        List<BlockShapeSO> batch = new List<BlockShapeSO>();
+        for (int i = 0; i < slots.Length; i++)
+            if (saviors.Count > 0)
+                batch.Add(saviors[Random.Range(0, saviors.Count)]);
+
+        for (int i = 0; i < batch.Count; i++)
+        {
+            var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
+            b.Initialize(batch[i]);
+            _activeBlocks.Add(b);
+        }
+    }
+
+    public void SpawnSet()
+    {
+        // 1. HAMLE SAYACINI ARTTIR
+        // Set yenileniyorsa oyuncu hamlesini yapmıştır.
+        _totalMovesPlayed++;
+
+        // Temizlik
+        foreach (var b in _activeBlocks) if (b) Destroy(b.gameObject);
+        _activeBlocks.Clear();
+
+        Grid grid = GridManager.Instance.LevelGrid;
+        float fill = grid.GetFillPercentage();
+
+        // 2. Modu Belirle (Artık süre yok, hamle var)
+        SpawnerMode calculatedMode = DetermineMode(fill);
+        LogModeChange(calculatedMode, fill);
+
+        // 3. HAVUZLARI HAZIRLA
+        List<BlockShapeSO> primaryPool = GetPoolForMode(calculatedMode, grid);
+
+        List<BlockShapeSO> secondaryRaw = (calculatedMode == SpawnerMode.Relax || calculatedMode == SpawnerMode.WarmUp)
+            ? cleanShapes
+            : allShapes;
+
+        List<BlockShapeSO> secondaryPool = ShapeFinder.GetFits(grid, secondaryRaw);
+
+        // 4. Batch
+        List<BlockShapeSO> batch = GenerateUniqueBatch(grid, primaryPool, secondaryPool, slots.Length);
+
+        // 5. Spawn
+        for (int i = 0; i < batch.Count; i++)
+        {
+            var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
+            b.Initialize(batch[i]);
+            _activeBlocks.Add(b);
+        }
+
+        CheckGameOver();
+    }
+
+    // --- BENZERSİZ VE GARANTİLİ KARIŞIM (Aynen korundu) ---
+    private List<BlockShapeSO> GenerateUniqueBatch(Grid grid, List<BlockShapeSO> primary, List<BlockShapeSO> secondary, int count)
+    {
+        HashSet<BlockShapeSO> selectedSet = new HashSet<BlockShapeSO>();
+        List<BlockShapeSO> finalBatch = new List<BlockShapeSO>();
+
+        void TryFillFrom(List<BlockShapeSO> sourceList)
+        {
+            if (sourceList == null || sourceList.Count == 0) return;
+            if (finalBatch.Count >= count) return;
+
+            List<BlockShapeSO> shuffled = new List<BlockShapeSO>(sourceList);
+            ShuffleList(shuffled);
+
+            foreach (var shape in shuffled)
+            {
+                if (finalBatch.Count >= count) break;
+                if (selectedSet.Contains(shape)) continue;
+                if (GridManager.Instance.CanFitAnywhere(new BlockData(shape.ToMatrix().Trim())))
+                {
+                    selectedSet.Add(shape);
+                    finalBatch.Add(shape);
+                }
+            }
+        }
+
+        TryFillFrom(primary);
+        TryFillFrom(secondary);
+
+        if (finalBatch.Count < count)
+        {
+            var allFits = ShapeFinder.GetFits(grid, allShapes);
+            TryFillFrom(allFits);
+        }
+
+        if (finalBatch.Count < count)
+        {
+            var easyFits = ShapeFinder.GetFits(grid, easyShapes);
+            while (finalBatch.Count < count && easyFits.Count > 0)
+            {
+                var s = easyFits[Random.Range(0, easyFits.Count)];
+                finalBatch.Add(s);
+            }
+        }
+
+        return finalBatch;
+    }
+
+    public void OnBlockPlaced(DraggableBlock b)
+    {
+        _activeBlocks.Remove(b);
+
+        if (_activeBlocks.Count == 0)
+        {
+            SpawnSet();
+        }
+        else
+        {
+            StartCoroutine(CheckGameOverRoutine());
+        }
+    }
+
+    private IEnumerator CheckGameOverRoutine()
+    {
+        yield return new WaitForEndOfFrame();
+        CheckGameOver();
+    }
+
+    private void CheckGameOver()
+    {
+        if (_activeBlocks.Count == 0) return;
+
+        foreach (var b in _activeBlocks)
+        {
+            if (GridManager.Instance.CanFitAnywhere(b.GetData())) return;
+        }
+
+        Debug.Log("GAME OVER: Yerleşecek yer kalmadı!");
+        GameManager.Instance.TriggerGameOver();
+    }
+    public void OnLinesCleared(int linesCount)
+    {
+        // Eğer ısınma çoktan bittiyse (oyun oturduysa), belki küçük bir miktar geri sarabiliriz
+        // veya hiç karışmayız. Ama senin isteğin "Eşiğe eklensin" olduğu için:
+        
+        // Örn: 3 satır sildin. rewardMovesPerLine = 2 ise.
+        // Toplam 6 hamlelik bir kredi kazanırsın.
+        int bonusMoves = linesCount * rewardMovesPerLine;
+
+        _targetWarmUpMoves += bonusMoves;
+
+        // Debug.Log($"[ÖDÜL] {linesCount} satır silindi. +{bonusMoves} Hamle eklendi. Yeni Hedef: {_targetWarmUpMoves}");
+    }
+    private void ClearActiveBlocks()
+    {
+        foreach (var b in _activeBlocks)
+            if (b) Destroy(b.gameObject);
+        _activeBlocks.Clear();
+    }
 }

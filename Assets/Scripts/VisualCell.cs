@@ -42,6 +42,7 @@ public class VisualCell : MonoBehaviour
         {
             case VisualSpawnType.None:
                 // Sessiz açılış (Level Pattern)
+                print("NONE SPAWNED: " + colorType);
                 OnIdle(); 
                 break;
 

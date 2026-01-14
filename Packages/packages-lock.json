@@ -221,6 +221,20 @@
       },
       "url": "https://packages.unity.com"
     },
+    "com.vns.utility.animations": {
+      "version": "1.0.5",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://npm.pkg.github.com/@vns-games"
+    },
+    "com.vns.utility.helpers": {
+      "version": "1.0.5",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://npm.pkg.github.com/@vns-games"
+    },
     "com.vns.utility.singleton": {
       "version": "1.0.3",
       "depth": 0,

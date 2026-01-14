@@ -42,7 +42,7 @@ GameObject:
   - component: {fileID: 4883268280909757998}
   - component: {fileID: 165353350420587251}
   - component: {fileID: 8370594374965938039}
-  - component: {fileID: 9182828234707259768}
+  - component: {fileID: 1433458827109694811}
   m_Layer: 0
   m_Name: DraggableBlock
   m_TagString: Untagged
@@ -79,11 +79,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   visualRoot: {fileID: 8131255184211277938}
-  visualCellPrefab: {fileID: 7234884086888280893, guid: 7f26736239a7db7468c16093016d0bb2, type: 3}
-  blockSprites:
-  - {fileID: 21300000, guid: 8bc4672279144c3438e40529ab0017ce, type: 3}
-  slotScale: 0.6
-  dragScale: 1
+  visualCellPrefab: {fileID: 7234884086888280893, guid: 37bd5e38d59ce1547897c3417d395c8e, type: 3}
+  hitboxSize: {x: 2, y: 2}
+  maxSlotDimension: 1
   dragOffsetY: 2
   moveDuration: 0.3
 --- !u!114 &8370594374965938039
@@ -99,11 +97,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   container: {fileID: 8131255184211277938}
-  cellPrefab: {fileID: 4533510624358484449, guid: 7f26736239a7db7468c16093016d0bb2, type: 3}
+  cellPrefab: {fileID: 4533510624358484449, guid: 37bd5e38d59ce1547897c3417d395c8e, type: 3}
   slotScale: 0.5
   dragScale: 1
---- !u!60 &9182828234707259768
-PolygonCollider2D:
+--- !u!61 &1433458827109694811
+BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -144,11 +142,6 @@ PolygonCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Points:
-    m_Paths:
-    - - {x: 0, y: 1}
-      - {x: -0.95105654, y: 0.30901697}
-      - {x: -0.5877852, y: -0.80901706}
-      - {x: 0.58778536, y: -0.80901694}
-      - {x: 0.9510565, y: 0.30901712}
-  m_UseDelaunayMesh: 0
+  serializedVersion: 2
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0

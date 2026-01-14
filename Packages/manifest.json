@@ -9,6 +9,10 @@
     ],
 "dependencies": {
     
+    
+    
+    
+    
     "com.unity.collab-proxy": "2.11.2",
     "com.unity.feature.2d": "2.0.1",
     "com.unity.ide.rider": "3.0.36",
@@ -51,5 +55,9 @@
     "com.unity.modules.xr": "1.0.0"
   ,
     "com.vns.utility.singleton": "1.0.3"
+,
+    "com.vns.utility.helpers": "1.0.5"
+,
+    "com.vns.utility.animations": "1.0.5"
 }
 }

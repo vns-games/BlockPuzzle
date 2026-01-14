@@ -1,43 +1,76 @@
 using System.Collections.Generic;
 using UnityEngine;
-public class CellVisualPool : MonoBehaviour
+using VnS.Utility.Singleton;
+
+[DefaultExecutionOrder(-100)]
+public class CellVisualPool : Singleton<CellVisualPool>
 {
-    public static CellVisualPool Instance;
 
-    [SerializeField] GameObject prefab;
-    [SerializeField] int preload = 64;
+    [Header("Settings")]
+    [SerializeField] private GameObject prefab; // VisualCell prefabı buraya
+    [SerializeField] private int preload = 64;
 
-    Queue<GameObject> pool = new();
-
-    void Awake()
+    private Queue<GameObject> pool = new Queue<GameObject>();
+    
+    public void Initialize()
     {
-        Instance = this;
+        // Prefab kontrolü (Hata varsa burada yakalayalım)
+        if (prefab == null)
+        {
+            Debug.LogError("KRİTİK HATA: CellVisualPool içindeki 'Prefab' slotu boş! Lütfen Inspector'dan atama yapın.");
+            return;
+        }
 
         for (int i = 0; i < preload; i++)
             Create();
     }
 
-    void Create()
+    GameObject Create()
     {
-        var go = Instantiate(prefab, transform);
+        if (prefab == null) return null;
+
+        GameObject go = Instantiate(prefab, transform);
         go.SetActive(false);
         pool.Enqueue(go);
+        return go;
     }
 
     public GameObject Get()
     {
-        if (pool.Count == 0)
-            Create();
+        if (prefab == null)
+        {
+            Debug.LogError("Pool Hatası: Prefab yok!");
+            return null;
+        }
 
-        var go = pool.Dequeue();
+        GameObject go = null;
+
+        // --- GÜVENLİK DÖNGÜSÜ ---
+        // Havuzdan çektiğimiz obje "Destroy" edilmiş olabilir. 
+        // Sağlam bir tane bulana kadar döngü kuruyoruz.
+        while (go == null)
+        {
+            if (pool.Count == 0)
+            {
+                go = Create(); // Havuz bittiyse yenisini üret
+                break;         // Create zaten sağlam döner
+            }
+            else
+            {
+                go = pool.Dequeue(); // Kuyruktan çek
+            }
+        }
+
         go.SetActive(true);
         return go;
     }
 
     public void Release(GameObject go)
     {
+        if (go == null) return;
+        
         go.SetActive(false);
-        go.transform.SetParent(transform);
+        go.transform.SetParent(transform); // Hiyerarşide Pool'un altına taşı
         pool.Enqueue(go);
     }
 }
