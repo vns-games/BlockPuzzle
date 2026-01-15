@@ -497,44 +497,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3c27cf0e97d3cc34da84c5d4e9e0a272, type: 2}
   - {fileID: 11400000, guid: 0b9fe991776cd5d43848f198ea1e48d7, type: 2}
   - {fileID: 11400000, guid: 16215eb37092ddb459c5c13ba6a2613f, type: 2}
-  cornerShapes:
-  - {fileID: 11400000, guid: 4e7d54f5176534d46acd02fab2a79487, type: 2}
-  - {fileID: 11400000, guid: 14c777895d265d9439d6dacd6e023583, type: 2}
-  - {fileID: 11400000, guid: a89afa342fe33eb4b981fe3b70cb6ff2, type: 2}
-  - {fileID: 11400000, guid: 2016a78fb90f14d4585476a236861c52, type: 2}
-  - {fileID: 11400000, guid: d703598db83695d489b40140c81eb383, type: 2}
-  - {fileID: 11400000, guid: 59373fabc87163c4ebdf45595b271075, type: 2}
-  - {fileID: 11400000, guid: 1d836b50104b9ca41be9674e8c894d42, type: 2}
-  - {fileID: 11400000, guid: 26dde53c8635146489cf7c0345ba74bc, type: 2}
-  - {fileID: 11400000, guid: 230a0ae97bddae64eb4fdfe91e6cc8e0, type: 2}
-  - {fileID: 11400000, guid: 106d07649a2438a42b3e5db72a2c0c6d, type: 2}
-  - {fileID: 11400000, guid: 3762b2b905463c0458dfdcfa88e29b0d, type: 2}
-  - {fileID: 11400000, guid: 29d9f78d48534264e9e1e0daec081154, type: 2}
-  - {fileID: 11400000, guid: 6ce953438a090b940bcb68f53ae9cfcb, type: 2}
-  - {fileID: 11400000, guid: 27bda44ac8b89724e8c924078d49ddec, type: 2}
-  - {fileID: 11400000, guid: 7c6e4d499807d404797f5c2e34321c44, type: 2}
-  - {fileID: 11400000, guid: d4a89b624893f3541a6417b717ffc7a7, type: 2}
-  - {fileID: 11400000, guid: 929ef3f08ae5c524286f063fd2c17350, type: 2}
-  - {fileID: 11400000, guid: 0587168359b97f54c9664a48e1181dda, type: 2}
-  - {fileID: 11400000, guid: 8fb41c402099f604a8a5231e19ab1c17, type: 2}
-  - {fileID: 11400000, guid: 652143cd08c3464429ac922f988ff5ce, type: 2}
-  - {fileID: 11400000, guid: 4a2999ace1254a84295a3c494ca25d1c, type: 2}
-  - {fileID: 11400000, guid: 07d754560264ee048996a1c3725e14e6, type: 2}
-  - {fileID: 11400000, guid: cb1f09a266e222e4a87e2901e1c3e4be, type: 2}
-  - {fileID: 11400000, guid: fae7dfc1f3e6575419c8a4699a2a0066, type: 2}
-  - {fileID: 11400000, guid: 9e2fb025c32fc1040b8f0bd022695010, type: 2}
-  - {fileID: 11400000, guid: c18dcd6cbc9f14a49aac99e870f6bebd, type: 2}
-  - {fileID: 11400000, guid: a63b225ab20c7434185f42b72c542039, type: 2}
-  - {fileID: 11400000, guid: 5fed836a731958741abe2e10d295445a, type: 2}
-  - {fileID: 11400000, guid: 6c2e081f645a07340b25dc4eea9b7338, type: 2}
-  - {fileID: 11400000, guid: 6ffd557023eb396498c6cf5f1c23ac46, type: 2}
-  - {fileID: 11400000, guid: 55bbfbb94a5328d49b6a1ce936a1a22a, type: 2}
-  - {fileID: 11400000, guid: 50bd807134f9a2746ae823951f22765d, type: 2}
-  - {fileID: 11400000, guid: a0f6e1b1972d14a4ea93ebe6739754dc, type: 2}
-  - {fileID: 11400000, guid: 50f1cdbf406e19341b6a744451ff8aa3, type: 2}
-  - {fileID: 11400000, guid: 18bd253159500c041aff0a64fecddc9a, type: 2}
-  - {fileID: 11400000, guid: 0a99b659c1933264cb6f14cebc14589a, type: 2}
-  - {fileID: 11400000, guid: 9f798b1d7795f784f879a84caa5b3a00, type: 2}
   blockPrefab: {fileID: 165353350420587251, guid: a51d0a275e8b6c84aad65984a6b659c8, type: 3}
   slots:
   - {fileID: 1612222149}
@@ -1566,7 +1528,7 @@ MonoBehaviour:
   scoreText: {fileID: 130634676}
   comboText: {fileID: 0}
   pointsPerBlock: 5
-  maxMovesForCombo: 5
+  maxMovesForCombo: 3
 --- !u!4 &1797682443
 Transform:
   m_ObjectHideFlags: 0

@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f80e3849037e4adf9cbf9a0f498f0460, type: 3}
+  m_Name: GameSounds
+  m_EditorClassIdentifier: 
+  sounds:
+  - key: Combo1
+    clip: {fileID: 8300000, guid: 499258c2e1f8ab84db053bb4c77a12d6, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo2
+    clip: {fileID: 8300000, guid: 5f293addfd84cf640bae46eb839ca5ff, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo3
+    clip: {fileID: 8300000, guid: 04dd4a58be5e70f47b50e631ca22cdb1, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo4
+    clip: {fileID: 8300000, guid: 974f013b630261941a78edcdf26a2925, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo5
+    clip: {fileID: 8300000, guid: e8220dcad87945f4fa62233ea762a25d, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo6
+    clip: {fileID: 8300000, guid: 6a7714104fe139c4bb4337045cdddec1, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo7
+    clip: {fileID: 8300000, guid: 7f5492c472eaccc4b900c4dbbea71d4c, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo8
+    clip: {fileID: 8300000, guid: b9c239bd5ddd4d8418e0917f32b7657e, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo9
+    clip: {fileID: 8300000, guid: ca8ab22906889d2479bbb61e6ec08999, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo10
+    clip: {fileID: 8300000, guid: 9a53aadfc678015429a7abb71184fd09, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Combo11
+    clip: {fileID: 8300000, guid: b4a89a7bd58b0dd42a7122d54684118f, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Good
+    clip: {fileID: 8300000, guid: 2212bd157dec21845881135292af8545, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Great
+    clip: {fileID: 8300000, guid: 20b1ba3518e8bac439e8dd1e583157ee, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Perfect
+    clip: {fileID: 8300000, guid: 5a6e8fe2b93c4464eb5de07e9e3bc945, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Excellent
+    clip: {fileID: 8300000, guid: 99a68d01cc43d4740b2a6d4de4a882e6, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Incredible
+    clip: {fileID: 8300000, guid: 7fd6f6b582d49394b9347a03e774e1a9, type: 3}
+    volume: 1
+    pitch: 1

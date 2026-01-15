@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using TMPro;
 using VnS.Utility.Animation; // Eğer UI kullanıyorsan
@@ -15,7 +17,7 @@ public class ScoreManager : Singleton<ScoreManager>
 
     private int _currentScore = 0;
     private int _multiplier = 1;
-    private int _movesSinceLastClear = 0;
+    private int _movesSinceLastClear = 100;
 
     /// <summary>
     /// Oyuncu her blok yerleştirdiğinde bunu çağır.
@@ -32,44 +34,114 @@ public class ScoreManager : Singleton<ScoreManager>
     /// Patlatma olduğunda çağır.
     /// </summary>
     /// <param name="clearedBlockCount">Toplam silinen kare sayısı</param>
-    public void OnBlast(int clearedBlockCount)
+    private int _comboAccumulator = 0;
+
+    public void OnBlast(int clearedBlockCount, int clearedLinesCount, bool isFullClear)
     {
-        // --- KOMBO MANTIĞI ---
-        // Eğer son patlatmadan beri 3 veya daha az hamle yapılmışsa kombo artar.
+        // 1. KOMBO MANTIĞI
         if (_movesSinceLastClear <= maxMovesForCombo)
-        {
-            _multiplier++;
-        }
+            _comboAccumulator += clearedLinesCount;
         else
+            _comboAccumulator = 0;
+
+        _multiplier = (_comboAccumulator > 0) ? _comboAccumulator : 1;
+
+        // 2. COMBO SESİ (Gecikmesiz)
+        if (_multiplier >= 1) PlayComboSound(_multiplier);
+
+
+        // --- 3. VOKAL SESİ SEÇİMİ (BURASI DEĞİŞTİ) ---
+        string vocalKey = "";
+
+        // ÖNCELİK 1: Grid tamamen temizlendiyse -> INCREDIBLE
+        if (isFullClear)
         {
-            // Çok oyalandı, kombo başa döndü
-            _multiplier = 1;
+            vocalKey = "Incredible";
+            // İstersen Full Clear için ekstra puan da verebilirsin:
+            // _currentScore += 1000; 
+            Debug.Log("[EFFECT] CLEAN SWEEP! Grid tertemiz oldu.");
+        }
+        // ÖNCELİK 2: Satır sayısına göre diğerleri
+        else if (clearedLinesCount >= 2)
+        {
+            vocalKey = clearedLinesCount switch
+            {
+                2 => "Good",
+                3 => "Great",
+                4 => "Perfect",
+                5 => "Excellent",
+                _ => "###"
+            };
         }
 
-        if (_multiplier >= 2)
+        // Vokal varsa gecikmeli çal
+        if (vocalKey != "")
+        {
+            StartCoroutine(PlayVocalDelayed(vocalKey, 0.4f));
+        }
+
+
+        // 4. SHAKE (Full Clear ise kesin salla, yoksa 3 satır kuralına bak)
+        if (isFullClear || clearedLinesCount >= 3)
         {
             if (GridManager.Instance)
-                GridManager.Instance.ShakeGrid(.1f);
+            {
+
+                GridManager.Instance.ShakeGrid(0.12f);
+            }
         }
-        // --- PUAN HESABI ---
-        // (Kare Sayısı * 5) * Çarpan
+
+        // 5. PUANLAMA (Full Clear bonusu eklenebilir)
         int points = (clearedBlockCount * pointsPerBlock) * _multiplier;
+        if (isFullClear) points += 500; // Örnek: Temizleme bonusu 500 puan
 
         _currentScore += points;
 
-        Debug.Log($"[SKOR] {clearedBlockCount} kare silindi. Çarpan: x{_multiplier}. Puan: +{points}");
+        // UI
+        if (scoreText) scoreText.ChangeNumber(points, "SCORE: ");
 
-        if (scoreText)
+        if (comboText)
         {
-            scoreText.ChangeNumber(points, "SCORE: ");
+            if (_multiplier > 1)
+            {
+                comboText.text = $"COMBO {_multiplier}!";
+                comboText.gameObject.SetActive(true);
+            }
+            else if (isFullClear) // Kombo yoksa bile ekranda yazsın
+            {
+                comboText.text = "INCREDIBLE!";
+                comboText.gameObject.SetActive(true);
+            }
+            else
+            {
+                comboText.gameObject.SetActive(false);
+            }
         }
 
-        // Patlatma yapıldığı için sayacı sıfırla
         _movesSinceLastClear = 0;
-
-        UpdateUI();
     }
+    // ScoreManager.cs içindeki ilgili fonksiyon
 
+    private void PlayComboSound(int multiplier)
+    {
+        // 10'dan büyükse 10'a sabitle
+        int soundIndex = Mathf.Clamp(multiplier, 1, 11);
+
+        // Key oluştur: "Combo1", "Combo2"...
+        string key = $"Combo{soundIndex}";
+        print("Playing " + key);
+
+        // TEK SATIRDA ÇAL:
+        Sound.Play(key);
+    }
+    private IEnumerator PlayVocalDelayed(string key, float delay)
+    {
+        // Belirtilen süre kadar bekle (0.4 saniye idealdir)
+        yield return new WaitForSeconds(delay);
+
+        // Vokali çal
+        Sound.Play(key);
+    }
     private void UpdateUI()
     {
 
