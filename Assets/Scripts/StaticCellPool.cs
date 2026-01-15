@@ -32,16 +32,34 @@ public static class StaticCellPool
     {
         Init();
 
-        var cell = _pool.Count > 0 ? _pool.Pop() : Object.Instantiate(_prefab, parent);
+        VisualCell cell;
+        if (_pool.Count > 0)
+        {
+            cell = _pool.Pop();
+        }
+        else
+        {
+            cell = Object.Instantiate(_prefab);
+        }
 
         Transform t = cell.transform;
-        t.position = position;
-        t.localRotation = Quaternion.identity;
 
+        // --- PARENTİ ZORLA ---
+        // Eğer parent null geldiyse, sahnenin köküne atmasın, hata vermesin.
+        // Amaç PoolRoot'tan kurtarmak.
+        if (parent != null)
+        {
+            t.SetParent(parent, true); // true: World pozisyonunu korumaya çalışır
+        }
+        
+        // Parent atadıktan sonra pozisyonu ve scale'i sıfırla/ayarla
+        t.position = position; 
+        t.localRotation = Quaternion.identity;
+        
         cell.gameObject.SetActive(true);
+
         return cell;
     }
-
     public static void Despawn(VisualCell cell)
     {
         if (cell == null) return;

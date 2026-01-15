@@ -16,7 +16,7 @@ public enum SpawnerMode
 public class BlockSpawner : Singleton<BlockSpawner>
 {
     [Header("Shapes")]
-    public List<BlockShapeSO> allShapes, easyShapes, bigShapes, cleanShapes, cornerShapes;
+    public List<BlockShapeSO> allShapes, easyShapes, bigShapes, cleanShapes;
 
     [Header("Refs")]
     public DraggableBlock blockPrefab;
@@ -169,36 +169,6 @@ public class BlockSpawner : Singleton<BlockSpawner>
 
         // Acil Durum
         return ShapeFinder.GetFits(grid, easyShapes);
-    }
-
-    // --- BENZERSİZ KARIŞIM ALGORİTMASI ---
-    private List<BlockShapeSO> GenerateUniqueBatch(List<BlockShapeSO> primary, int count)
-    {
-        List<BlockShapeSO> batch = new List<BlockShapeSO>();
-        if (primary == null || primary.Count == 0) return batch;
-
-        List<BlockShapeSO> pool = new List<BlockShapeSO>(primary);
-
-        if (pool.Count < count) pool.AddRange(allShapes);
-
-        for (int i = 0; i < pool.Count; i++)
-        {
-            var temp = pool[i];
-            int rnd = Random.Range(i, pool.Count);
-            pool[i] = pool[rnd];
-            pool[rnd] = temp;
-        }
-
-        HashSet<BlockShapeSO> selected = new HashSet<BlockShapeSO>();
-        foreach (var s in pool)
-        {
-            if (batch.Count >= count) break;
-            if (selected.Add(s)) batch.Add(s);
-        }
-
-        while (batch.Count < count) batch.Add(easyShapes[0]);
-
-        return batch;
     }
 
     private void ShuffleList<T>(List<T> list)

@@ -46,6 +46,11 @@ public class ScoreManager : Singleton<ScoreManager>
             _multiplier = 1;
         }
 
+        if (_multiplier >= 2)
+        {
+            if (GridManager.Instance)
+                GridManager.Instance.ShakeGrid(.1f);
+        }
         // --- PUAN HESABI ---
         // (Kare Sayısı * 5) * Çarpan
         int points = (clearedBlockCount * pointsPerBlock) * _multiplier;
@@ -58,7 +63,7 @@ public class ScoreManager : Singleton<ScoreManager>
         {
             scoreText.ChangeNumber(points, "SCORE: ");
         }
-        
+
         // Patlatma yapıldığı için sayacı sıfırla
         _movesSinceLastClear = 0;
 
@@ -82,4 +87,6 @@ public class ScoreManager : Singleton<ScoreManager>
             }
         }
     }
+
+
 }

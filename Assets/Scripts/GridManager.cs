@@ -2,6 +2,7 @@ using UnityEngine;
 using VnS.Utility.Singleton;
 using System.Collections; // IEnumerator için gerekli
 using System.Collections.Generic;
+using DG.Tweening;
 
 public partial class GridManager : Singleton<GridManager>
 {
@@ -183,4 +184,15 @@ public partial class GridManager : Singleton<GridManager>
     public bool CanPlace(BlockData d, int x, int y) => LevelGrid.CanPlace(d, x, y);
     public bool CanFitAnywhere(BlockData d) => LevelGrid.CanFitAnywhere(d);
     public float GetFillPercentage() => LevelGrid.GetFillPercentage();
+    
+    public void ShakeGrid(float strength)
+    {
+        // Eğer zaten sallanıyorsa önce durdur (DOKill), sonra tekrar salla.
+        // complete: true parametresi, animasyonu anında bitiş konumuna (0,0,0) getirir, kayma yapmaz.
+        visualRoot.DOKill(true);
+        
+        // Parametreler: Süre, Güç, Titreşim Sıklığı, Rastgelelik
+        // Güç (strength): Ne kadar sert sallanacak? (0.5f hafif, 1.0f sert)
+        visualRoot.DOShakePosition(0.4f, strength, 20, 90, false, true);
+    }
 }
