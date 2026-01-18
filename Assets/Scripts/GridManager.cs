@@ -51,6 +51,7 @@ public partial class GridManager : Singleton<GridManager>
 
         Debug.Log("GRID: Level oluşturuluyor...");
         GenerateInitialLevel();
+        BlockSpawner.Instance.StartGame();
     }
 
     public void GenerateInitialLevel()

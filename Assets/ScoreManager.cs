@@ -7,6 +7,8 @@ using VnS.Utility.Singleton;
 
 public class ScoreManager : Singleton<ScoreManager>
 {
+    public static event Action<int> OnCombo;
+    public static event Action OnIncredible;
     [Header("UI References")]
     public TextMeshProUGUI scoreText; // Puanın yazdığı Text
     public TextMeshProUGUI comboText; // "Combo x2!" yazan Text
@@ -18,6 +20,7 @@ public class ScoreManager : Singleton<ScoreManager>
     private int _currentScore = 0;
     private int _multiplier = 1;
     private int _movesSinceLastClear = 100;
+    public int Multiplier => _multiplier;
 
     /// <summary>
     /// Oyuncu her blok yerleştirdiğinde bunu çağır.
@@ -28,6 +31,8 @@ public class ScoreManager : Singleton<ScoreManager>
 
         // Eğer çok beklersen kombo riskte (ama patlatana kadar sıfırlamıyoruz, belki şimdi patlatır)
         // İstersen burada UI güncelleyip "Kombo gidiyor!" diyebilirsin.
+
+        NotifyComboTimer();
     }
 
     /// <summary>
@@ -119,6 +124,12 @@ public class ScoreManager : Singleton<ScoreManager>
         }
 
         _movesSinceLastClear = 0;
+
+        NotifyComboTimer();
+        if (isFullClear)
+        {
+            OnIncredible?.Invoke();
+        }
     }
     // ScoreManager.cs içindeki ilgili fonksiyon
 
@@ -142,6 +153,20 @@ public class ScoreManager : Singleton<ScoreManager>
         // Vokali çal
         Sound.Play(key);
     }
+
+    private void NotifyComboTimer()
+    {
+        // Formül: Maksimum Hak - Harcanan Hak
+        int remainingMoves = maxMovesForCombo - _movesSinceLastClear;
+
+        // Eğer sonuç negatifse (kombo kırılmışsa veya oyun başıysa), 0'a sabitle
+        // Böylece UI'da eksi değer görmeyiz.
+        if (remainingMoves < 0) remainingMoves = 0;
+
+        // Eventi fırlat! (Dinleyen herkes kalan süreyi öğrensin)
+        OnCombo?.Invoke(remainingMoves);
+    }
+
     private void UpdateUI()
     {
 

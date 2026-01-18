@@ -12,9 +12,6 @@ public class GameManager : Singleton<GameManager>
         // 2. SONRA GRİDİ OLUŞTUR (Havuzdan parça çekecek)
         GridManager.Instance.Initialize();
 
-        // 3. EN SON SPAWNER'I BAŞLAT (Oyun başlasın)
-        BlockSpawner.Instance.StartGame();
-        
         Debug.Log("GAME MANAGER: Oyun hazır!");
     }
     

@@ -26,7 +26,7 @@ public class VisualCell : MonoBehaviour
         _myColor = colorType;
 
         // --- Atlas ve Sprite Yükleme (GameAssets üzerinden) ---
-        var atlas = GameAssets.BlockAtlas;
+        var atlas = GameAssets.Atlas;
         if (atlas)
         {
             mainRenderer.sprite = atlas.GetSprite($"{colorType}");

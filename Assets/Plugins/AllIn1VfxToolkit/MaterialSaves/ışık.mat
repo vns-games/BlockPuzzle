@@ -134,8 +134,8 @@ Material:
     - _FadeScrollXSpeed: 0
     - _FadeScrollYSpeed: 0
     - _FadeTransition: 0.075
-    - _Glow: 4
-    - _GlowGlobal: 0.8
+    - _Glow: 10
+    - _GlowGlobal: 0.05
     - _HandDrawnAmount: 40
     - _HandDrawnSpeed: 1
     - _HsvBright: 1
@@ -236,7 +236,7 @@ Material:
     - _DepthGlowColor: {r: 1, g: 1, b: 1, a: 1}
     - _FadeBurnColor: {r: 1, g: 1, b: 0, a: 1}
     - _FrontFaceTint: {r: 1, g: 1, b: 1, a: 1}
-    - _GlowColor: {r: 1, g: 0, b: 0.21022701, a: 1}
+    - _GlowColor: {r: 1, g: 1, b: 1, a: 1}
     - _LightColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _Shape2Color: {r: 1, g: 1, b: 1, a: 1}

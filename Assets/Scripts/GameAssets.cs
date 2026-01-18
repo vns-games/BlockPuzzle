@@ -3,23 +3,23 @@ using UnityEngine.U2D; // SpriteAtlas için şart
 
 public static class GameAssets
 {
-    private static SpriteAtlas _blockAtlas;
+    private static SpriteAtlas _atlas;
 
     // Bu özelliğe (Property) her erişildiğinde:
     // Atlas henüz yüklenmediyse yükler, yüklüyse var olanı verir (Singleton mantığı).
-    public static SpriteAtlas BlockAtlas
+    public static SpriteAtlas Atlas
     {
         get
         {
-            if (_blockAtlas == null)
+            if (_atlas == null)
             {
                 // "BlockAtlas" ismi Resources klasöründeki dosya adıyla AYNI olmalı
-                _blockAtlas = Resources.Load<SpriteAtlas>("BlockAtlas");
+                _atlas = Resources.Load<SpriteAtlas>("Atlas");
                 
-                if (_blockAtlas == null) 
-                    Debug.LogError("KRİTİK HATA: Resources klasöründe 'BlockAtlas' bulunamadı!");
+                if (_atlas == null) 
+                    Debug.LogError("KRİTİK HATA: Resources klasöründe 'Atlas' bulunamadı!");
             }
-            return _blockAtlas;
+            return _atlas;
         }
     }
 

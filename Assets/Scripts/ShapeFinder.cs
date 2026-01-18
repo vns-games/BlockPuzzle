@@ -57,20 +57,44 @@ public static class ShapeFinder
     public static List<BlockShapeSO> GetLargePerfectFits(Grid grid, List<BlockShapeSO> candidates, float threshold)
     {
         var list = new List<BlockShapeSO>();
+        var solidFits = new List<BlockShapeSO>(); // Tam dolu olanlar (Kare, Çubuk)
 
         foreach (var shape in candidates)
         {
             BlockData data = new BlockData(shape.ToMatrix().Trim());
 
-            // 1x1 veya 2x1 gibi küçük parçaları ele (Tetris hissi için büyük parça lazım)
+            // 1. KÜTLE KONTROLÜ (Çok küçük parçaları ele)
             int mass = CountMass(data);
             if (mass < 3) continue;
 
-            // En iyi temas oranını bul
+            // 2. TEMAS KONTROLÜ
             float bestRatio = GetBestContactRatio(grid, data);
+            
+            if (bestRatio >= threshold)
+            {
+                // BURASI YENİ:
+                // Parça tam bir dikdörtgen mi? (Deliksiz mi?)
+                // Örn: 3x3 Kare -> Alan 9, Kütle 9 -> TAM DOLU
+                // Örn: U Şekli -> Alan 9, Kütle 7 -> EKSİK
+                int area = data.Width * data.Height;
+                bool isSolid = (mass == area);
 
-            if (bestRatio >= threshold) list.Add(shape);
+                if (isSolid)
+                {
+                    solidFits.Add(shape); // Öncelikli listeye ekle
+                }
+                else
+                {
+                    list.Add(shape); // Normal listeye ekle
+                }
+            }
         }
+
+        // Eğer tam dolu (Solid) parça bulduysak SADECE onları döndür.
+        // Böylece U şekli yerine Kare şekli gelir.
+        if (solidFits.Count > 0) return solidFits;
+
+        // Yoksa diğerlerini döndür
         return list;
     }
 
