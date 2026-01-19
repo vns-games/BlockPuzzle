@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: "\u0131\u015F\u0131k"
+  m_Name: Glow_dis_mavi
   m_Shader: {fileID: 4800000, guid: 6eb86e4931b506a408fd1477edec61ea, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -24,12 +24,12 @@ Material:
   m_CustomRenderQueue: 3000
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties: _ShakeUvSpeed
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
     - _ColorRampTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 0cbe97237cc70cf47bd7cd10a1498398, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ColorRampTexGradient:
@@ -61,7 +61,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskTex:
-        m_Texture: {fileID: 2800000, guid: ad5da642b28ff2d4d913e410c5dcc0f4, type: 3}
+        m_Texture: {fileID: 2800000, guid: 0cbe97237cc70cf47bd7cd10a1498398, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape1MaskTex:
@@ -73,7 +73,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape2Tex:
-        m_Texture: {fileID: 2800000, guid: 7ba79af2c934f8a4e850124c42fc3e02, type: 3}
+        m_Texture: {fileID: 2800000, guid: ad5da642b28ff2d4d913e410c5dcc0f4, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape3DistortTex:
@@ -98,20 +98,20 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Alpha: 1
-    - _AlphaCutoffValue: 0
+    - _Alpha: 0.09
+    - _AlphaCutoffValue: 0.25
     - _AlphaFadeAmount: -0.1
     - _AlphaFadePow: 1
     - _AlphaFadeSmooth: 0.075
-    - _AlphaStepMax: 0.857
+    - _AlphaStepMax: 0.075
     - _AlphaStepMin: 0
     - _CamDistFadeStepMax: 100
     - _CamDistFadeStepMin: 0
     - _CamDistProximityFade: 0
-    - _ColorGradingMidPoint: 0.5
+    - _ColorGradingMidPoint: 0.51
     - _ColorMask: 15
-    - _ColorRampBlend: 1
-    - _ColorRampLuminosity: 0
+    - _ColorRampBlend: 0
+    - _ColorRampLuminosity: -0.46
     - _CullingOption: 0
     - _DebugShape: 1
     - _DepthGlow: 1
@@ -134,15 +134,15 @@ Material:
     - _FadeScrollXSpeed: 0
     - _FadeScrollYSpeed: 0
     - _FadeTransition: 0.075
-    - _Glow: 10
-    - _GlowGlobal: 0.05
-    - _HandDrawnAmount: 40
-    - _HandDrawnSpeed: 1
+    - _Glow: 12
+    - _GlowGlobal: -0.04
+    - _HandDrawnAmount: 10
+    - _HandDrawnSpeed: 5
     - _HsvBright: 1
     - _HsvSaturation: 1
     - _HsvShift: 180
     - _LightAmount: 0
-    - _MaskPow: 0.62
+    - _MaskPow: 0.3
     - _OffsetSh1: 1
     - _OffsetSh2: 1
     - _OffsetSh3: 1
@@ -158,8 +158,8 @@ Material:
     - _RimIntensity: 1
     - _RimPower: 5
     - _RimScale: 1
-    - _RoundWaveSpeed: 5
-    - _RoundWaveStrength: 0.227
+    - _RoundWaveSpeed: 2
+    - _RoundWaveStrength: 0.7
     - _ScreenUvSh2DistScale: 1
     - _ScreenUvSh3DistScale: 1
     - _ScreenUvShDistScale: 1
@@ -169,13 +169,13 @@ Material:
     - _ShadowAmount: 0.4
     - _ShadowStepMax: 1
     - _ShadowStepMin: 0
-    - _ShakeUvSpeed: 26.4
-    - _ShakeUvX: 1
-    - _ShakeUvY: 1
+    - _ShakeUvSpeed: 20
+    - _ShakeUvX: 5
+    - _ShakeUvY: 4
     - _Shape1MaskPow: 1
-    - _Shape2AlphaWeight: 3
+    - _Shape2AlphaWeight: 1
     - _Shape2Brightness: 0
-    - _Shape2ColorWeight: 3
+    - _Shape2ColorWeight: 1
     - _Shape2Contrast: 1
     - _Shape2DistortAmount: 0.5
     - _Shape2DistortXSpeed: 0.1
@@ -208,15 +208,15 @@ Material:
     - _ShapeYSpeed: 0
     - _SoftFactor: 0.5
     - _SrcMode: 1
-    - _TextureScrollXSpeed: 5.07
-    - _TextureScrollYSpeed: 3.73
+    - _TextureScrollXSpeed: 1
+    - _TextureScrollYSpeed: 0
     - _TimingSeed: 0
     - _TrailWidthPower: 1
     - _TwistUvAmount: 1
     - _TwistUvPosX: 0.5
     - _TwistUvPosY: 0.5
     - _TwistUvRadius: 0.75
-    - _VertOffsetAmount: 0.14
+    - _VertOffsetAmount: 0.5
     - _VertOffsetPower: 1
     - _VertOffsetTexXSpeed: 0.1
     - _VertOffsetTexYSpeed: 0.1
@@ -230,16 +230,16 @@ Material:
     m_Colors:
     - _BackFaceTint: {r: 0.5, g: 0.5, b: 0.5, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _ColorGradingDark: {r: 1, g: 1, b: 1, a: 1}
-    - _ColorGradingLight: {r: 1, g: 1, b: 1, a: 1}
-    - _ColorGradingMiddle: {r: 1, g: 1, b: 1, a: 1}
+    - _ColorGradingDark: {r: 1, g: 0, b: 0, a: 1}
+    - _ColorGradingLight: {r: 1, g: 0, b: 0, a: 1}
+    - _ColorGradingMiddle: {r: 0, g: 0, b: 0, a: 1}
     - _DepthGlowColor: {r: 1, g: 1, b: 1, a: 1}
     - _FadeBurnColor: {r: 1, g: 1, b: 0, a: 1}
     - _FrontFaceTint: {r: 1, g: 1, b: 1, a: 1}
-    - _GlowColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlowColor: {r: 0.1254902, g: 0.14509805, b: 1, a: 1}
     - _LightColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _Shape2Color: {r: 1, g: 1, b: 1, a: 1}
     - _Shape3Color: {r: 1, g: 1, b: 1, a: 1}
-    - _ShapeColor: {r: 1, g: 1, b: 1, a: 0}
+    - _ShapeColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
