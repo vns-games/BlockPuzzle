@@ -1,7 +1,9 @@
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-public class UIBestScore : MonoBehaviour
+public class UIGameOverScoreText : MonoBehaviour
 {
     private TextMeshProUGUI _text;
     private void Awake()
@@ -10,6 +12,6 @@ public class UIBestScore : MonoBehaviour
     }
     private void OnEnable()
     {
-        _text.text = "BEST: " + PlayerPrefs.GetInt("BestScore", 0);
+        _text.text = ScoreManager.Instance.scoreText.text;
     }
 }

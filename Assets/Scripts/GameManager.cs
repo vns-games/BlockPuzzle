@@ -1,24 +1,25 @@
 ﻿using UnityEngine;
+using UnityEngine.Events;
 using VnS.Utility.Singleton;
 
 public class GameManager : Singleton<GameManager>
 {
     private bool _hasUsedRevive = false; // Bu oyun içinde dirilme hakkını kullandı mı?
-
+    [SerializeField] private UnityEvent onNotUsedRevive, onGameOver;
     void Start()
     {
+        StartGame();
+    }
+
+    public void StartGame()
+    {
+        _hasUsedRevive = false;
         Debug.Log("GAME MANAGER: Başlatma sekansı çalışıyor...");
-        
+
         // 2. SONRA GRİDİ OLUŞTUR (Havuzdan parça çekecek)
         GridManager.Instance.Initialize();
 
         Debug.Log("GAME MANAGER: Oyun hazır!");
-    }
-    
-    public void StartGame()
-    {
-        _hasUsedRevive = false;
-        // Diğer başlatma kodları...
     }
 
     public void TriggerGameOver()
@@ -26,16 +27,11 @@ public class GameManager : Singleton<GameManager>
         if (_hasUsedRevive)
         {
             // Zaten hakkını kullandıysa -> GERÇEK GAME OVER
-            Debug.Log("Oyun bitti. Skor ekranı açılıyor.");
-            // UIManager.Instance.ShowLoseScreen();
+            onGameOver?.Invoke();
         }
         else
         {
-            // Hakkı var -> REKLAM TEKLİFİ
-            Debug.Log("Öldün! Ama reklam izlersen 1x1 bloklarla devam edebilirsin.");
-            
-            // Burası UI Manager'ı tetikler:
-            //UIManager.Instance.ShowReviveOfferUI(); 
+            onNotUsedRevive?.Invoke();
         }
     }
 
@@ -49,12 +45,5 @@ public class GameManager : Singleton<GameManager>
         BlockSpawner.Instance.ActivateReviveMode();
 
         // UIManager.Instance.HideReviveUI();
-    }
-
-    // UI'daki "Hayır, İstemiyorum" butonu buna bağlanacak
-    public void OnReviveDeclined()
-    {
-        Debug.Log("Teklif reddedildi. Gerçek Game Over.");
-        // UIManager.Instance.ShowLoseScreen();
     }
 }

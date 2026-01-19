@@ -84,7 +84,7 @@ public class DraggableBlock : MonoBehaviour
                 VisualCell cell = Instantiate(visualCellPrefab, visualRoot);
                 cell.transform.localPosition = pos;
 
-                cell.Initialize(_myColor, 10, VisualSpawnType.Spawned);
+                cell.Initialize(_myColor, 15, VisualSpawnType.Spawned);
                 _spawnedCells.Add(cell);
             }
         }

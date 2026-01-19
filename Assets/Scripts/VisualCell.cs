@@ -58,7 +58,7 @@ public class VisualCell : MonoBehaviour
                 break;
         }
     }
-    
+    public BlockColorType MyColor => _myColor;
     // Diğer state metodları...
     public void OnIdle() { if(glowRenderer) glowRenderer.gameObject.SetActive(false); OnIdleEvent?.Invoke(); }
     public void OnDragging() { if(glowRenderer) glowRenderer.gameObject.SetActive(true); OnDraggingEvent?.Invoke(); }

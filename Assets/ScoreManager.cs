@@ -8,10 +8,10 @@ using VnS.Utility.Singleton;
 public class ScoreManager : Singleton<ScoreManager>
 {
     public static event Action<int> OnCombo;
-    public static event Action OnIncredible;
+    public static event Action OnIncredible, OnBestScore;
     [Header("UI References")]
-    public TextMeshProUGUI scoreText; // Puanın yazdığı Text
-    public TextMeshProUGUI comboText; // "Combo x2!" yazan Text
+    public TextMeshProUGUI scoreText;     // Puanın yazdığı Text
+    public TextMeshProUGUI bestScoreText; // "Combo x2!" yazan Text
 
     [Header("Settings")]
     public int pointsPerBlock = 5;   // Her kare 5 puan
@@ -21,6 +21,16 @@ public class ScoreManager : Singleton<ScoreManager>
     private int _multiplier = 1;
     private int _movesSinceLastClear = 100;
     public int Multiplier => _multiplier;
+    private int _bestScore;
+    private bool _beatedBestScore;
+    public void Initialize()
+    {
+        _beatedBestScore = false;
+        _movesSinceLastClear = 100;
+        _multiplier = 1;
+        _currentScore = 0;
+        _bestScore = PlayerPrefs.GetInt("BestScore");
+    }
 
     /// <summary>
     /// Oyuncu her blok yerleştirdiğinde bunu çağır.
@@ -105,23 +115,21 @@ public class ScoreManager : Singleton<ScoreManager>
         // UI
         if (scoreText) scoreText.ChangeNumber(points, "SCORE: ");
 
-        if (comboText)
+        if (_bestScore < _currentScore)
         {
-            if (_multiplier > 1)
+            PlayerPrefs.SetInt("BestScore", _currentScore);
+
+            if (bestScoreText)
             {
-                comboText.text = $"COMBO {_multiplier}!";
-                comboText.gameObject.SetActive(true);
+                bestScoreText.ChangeNumber(points, "BEST: ");
             }
-            else if (isFullClear) // Kombo yoksa bile ekranda yazsın
+            if (!_beatedBestScore)
             {
-                comboText.text = "INCREDIBLE!";
-                comboText.gameObject.SetActive(true);
-            }
-            else
-            {
-                comboText.gameObject.SetActive(false);
+                OnBestScore?.Invoke();
+                _beatedBestScore = true;
             }
         }
+
 
         _movesSinceLastClear = 0;
 
@@ -166,24 +174,5 @@ public class ScoreManager : Singleton<ScoreManager>
         // Eventi fırlat! (Dinleyen herkes kalan süreyi öğrensin)
         OnCombo?.Invoke(remainingMoves);
     }
-
-    private void UpdateUI()
-    {
-
-        if (comboText)
-        {
-            if (_multiplier > 1)
-            {
-                comboText.text = $"x{_multiplier}";
-                comboText.gameObject.SetActive(true);
-                // Buraya DOTween punch efekti eklersen çok tatlı olur
-            }
-            else
-            {
-                comboText.gameObject.SetActive(false);
-            }
-        }
-    }
-
 
 }

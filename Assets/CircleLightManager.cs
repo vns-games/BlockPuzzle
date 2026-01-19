@@ -8,111 +8,165 @@ public class CircleLightManager : MonoBehaviour
     [SerializeField] private List<CircleLight> lights;
 
     [Header("Snake Settings")]
-    [SerializeField] private int snakeLength;
-    [SerializeField] private float snakeDuration;
+    [SerializeField] private int snakeLength = 5;
+    [SerializeField] private float snakeDuration = 1f;
 
     [Header("Incredible Settings")]
     [SerializeField] private float doubleSnakeDuration = 1f;
     [SerializeField] private Color incredibleColor = Color.cyan;
 
-    [SerializeField] private float minAlpha;
+    [Header("Visual Settings")]
+    [SerializeField] private float minAlpha = 0.1f; 
+    [SerializeField] private float blinkDuration = 0.25f;
 
     private Status _status;
 
+    // Tween Referansları
     private Tween snakeTween;
-    private Sequence breathe;
+    private Tween breatheTween;
+    private Tween blinkTween;
 
-    // Yılanın en son kaldığı konumu tutar
     private float _lastSnakeHeadPosition = 0f;
     private int _remainingMoves;
+
+    // GPU Instancing Değişkenleri
+    private MaterialPropertyBlock _propBlock;
+    
+    private static readonly int GlowColorId = Shader.PropertyToID("_GlowColor");
+    private static readonly int ShapeColorId = Shader.PropertyToID("_Shape2Color");
+    
+    private Color _currentBaseColor = Color.white; 
+
+    private void Awake()
+    {
+        _propBlock = new MaterialPropertyBlock();
+    }
 
     private void OnEnable()
     {
         ScoreManager.OnCombo += OnCombo;
         ScoreManager.OnIncredible += OnIncredible;
     }
+
     private void OnDisable()
     {
         ScoreManager.OnCombo -= OnCombo;
         ScoreManager.OnIncredible -= OnIncredible;
     }
 
+    private void Start()
+    {
+        _currentBaseColor = Color.white;
+        _status = Status.Breathe;
+        Breathe();
+    }
+
     private void OnCombo(int remainingMoves)
     {
         _remainingMoves = remainingMoves;
-        // 1. DURUM: KOMBO YOK (0 veya daha az) -> BREATHE
+        
+        // 1. DURUM: KOMBO YOK -> BEYAZ BREATHE
         if (_remainingMoves <= 0)
         {
-            ChangeColor(Color.white); // Sakin mod rengi
+            ChangeBaseColor(Color.white); 
             Breathe();
             _status = Status.Breathe;
         }
-        // 2. DURUM: KOMBO VAR (3, 2, 1) -> HER TÜRLÜ YILAN (SNAKE)
+        // 2. DURUM: KOMBO VAR -> RENKLİ YILAN
         else
         {
-            // Hak sayısına göre rengi belirle
+            bool isGreenMode = false;
+
             if (_remainingMoves >= 3)
             {
-                ChangeColor(Color.green); // 3 Hak varken Yeşil Yılan
+                ChangeBaseColor(Color.green);
+                isGreenMode = true; // Sadece yeşilde blink yapacağız
             }
             else if (_remainingMoves == 2)
             {
-                ChangeColor(new Color(1, .8f, 0)); // 2 Hak varken Sarı Yılan
+                ChangeBaseColor(new Color(1, .8f, 0)); // Sarı
             }
-            else // _remainingMoves == 1
+            else
             {
-                ChangeColor(Color.red); // 1 Hak varken Kırmızı Yılan
+                ChangeBaseColor(Color.red);
             }
 
+            if (isGreenMode)
+            {
+                // Sadece YEŞİL ise ÇİFT BLINK yap, sonra Snake başlasın
+                PlayDoubleBlinkAndStartSnake();
+            }
+            else
+            {
+                // Sarı veya Kırmızı ise direkt Snake başlasın
+                StartSnakeEffect();
+            }
 
-            // Hepsinde Yılan efekti çalıştır (Kaldığı yerden devam eder)
-            StartSnakeEffect();
             _status = Status.Snake;
         }
     }
 
     private void OnIncredible()
     {
-        ChangeColor(incredibleColor);
+        ChangeBaseColor(incredibleColor);
         StartDoubleSnakeEffect();
         _status = Status.DoubleSnake;
     }
 
-    private void Start()
+    // --- EFEKTLER ---
+
+    private void PlayDoubleBlinkAndStartSnake()
     {
-        // Başlangıçta Kombo yok, Breathe çalışsın
-        _status = Status.Breathe;
-        Breathe();
+        KillActiveTweens(); 
+
+        // Blink hızını biraz artırdık (Daha seri çaksın)
+        float fastBlinkDuration = blinkDuration * 0.7f;
+
+        // Parlaktan Sönüğe doğru blink
+        blinkTween = DOVirtual.Float(1f, minAlpha, fastBlinkDuration, (value) => 
+        {
+            UpdateAllLightsAlpha(value);
+        })
+        .SetEase(Ease.OutQuad)
+        .SetLoops(2, LoopType.Restart) // 2 Kere Çak
+        .OnComplete(() => 
+        {
+            blinkTween = null;
+            StartSnakeEffect();
+        });
     }
 
     private void Breathe()
     {
-        if (breathe != null && breathe.IsActive() && breathe.IsPlaying()) return;
+        // Zaten oynuyorsa tekrar başlatma
+        if (breatheTween != null && breatheTween.IsActive() && breatheTween.IsPlaying()) return;
 
         KillActiveTweens();
-        ResetAllLights();
+        
+        // 1. Önce ışıkları tamamen "Söndür" (minAlpha seviyesine çek)
+        // Böylece efekt başladığında ışıklar sönük olur.
+        UpdateAllLightsAlpha(0);
 
-        breathe = DOTween.Sequence();
-        foreach (var circleLight in lights)
+        // 2. Animasyon Yönü Değiştirildi:
+        // Eskiden: 1f -> minAlpha (Parlaktan Sönüğe) idi.
+        // Şimdi: minAlpha -> 1f (Sönükten Parlaya) yaptık.
+        breatheTween = DOVirtual.Float(minAlpha, 1f, 2f, (value) => 
         {
-            breathe.Join(circleLight.SpriteRenderer.DOFade(1f, 1f));
-        }
-        breathe.SetLoops(-1, LoopType.Yoyo).Play();
+            UpdateAllLightsAlpha(value);
+        })
+        .SetLoops(-1, LoopType.Yoyo)
+        .SetEase(Ease.InOutSine);
     }
 
     public void StartSnakeEffect()
     {
-        // Zaten Yılan modundaysak ve animasyon çalışıyorsa dokunma (Renk değişse bile akış bozulmasın)
-        if (_status == Status.Snake) return;
-
-        KillActiveTweens();
-        ResetAllLights();
-
-        // Kaldığı yerden devam et
+        if (snakeTween != null) snakeTween.Kill();
+        if (breatheTween != null) breatheTween.Kill();
+        
         float startPos = _lastSnakeHeadPosition % lights.Count;
         float endPos = startPos + lights.Count;
 
-        snakeTween = DOVirtual.Float(startPos, endPos, snakeDuration, UpdateLights)
+        snakeTween = DOVirtual.Float(startPos, endPos, snakeDuration, UpdateSnakeLights)
             .SetLoops(-1, LoopType.Restart)
             .SetEase(Ease.Linear);
     }
@@ -122,14 +176,36 @@ public class CircleLightManager : MonoBehaviour
         if (_status == Status.DoubleSnake) return;
 
         KillActiveTweens();
-        ResetAllLights();
 
         snakeTween = DOVirtual.Float(0, lights.Count, doubleSnakeDuration, UpdateDoubleSnakeLights)
             .SetLoops(8, LoopType.Restart)
-            .SetEase(Ease.Linear).OnComplete(() =>
+            .SetEase(Ease.Linear)
+            .OnComplete(() =>
             {
                 OnCombo(_remainingMoves);
             });
+    }
+
+    // --- IŞIK GÜNCELLEME MANTIKLARI ---
+
+    private void UpdateSnakeLights(float headPosition)
+    {
+        _lastSnakeHeadPosition = headPosition;
+        int headIndex = Mathf.FloorToInt(headPosition) % lights.Count;
+
+        // Reset
+        for(int i = 0; i < lights.Count; i++) 
+            SetLightColorWithAlpha(lights[i], minAlpha);
+
+        // Yılan
+        for(int i = 0; i < snakeLength; i++)
+        {
+            int targetIndex = (headIndex - i + lights.Count) % lights.Count;
+            float alphaRatio = 1f - ((float)i / snakeLength);
+            float finalAlpha = Mathf.Max(alphaRatio, minAlpha);
+            
+            SetLightColorWithAlpha(lights[targetIndex], finalAlpha);
+        }
     }
 
     private void UpdateDoubleSnakeLights(float headPosition)
@@ -137,66 +213,61 @@ public class CircleLightManager : MonoBehaviour
         int headIndex1 = Mathf.FloorToInt(headPosition) % lights.Count;
         int headIndex2 = (headIndex1 + (lights.Count / 2)) % lights.Count;
 
-        for(int i = 0; i < lights.Count; i++) SetLightAlpha(lights[i], minAlpha);
+        // Reset
+        for(int i = 0; i < lights.Count; i++) 
+            SetLightColorWithAlpha(lights[i], minAlpha);
 
+        // Çift Yılan
         for(int i = 0; i < snakeLength; i++)
         {
             float alphaRatio = 1f - ((float)i / snakeLength);
             float finalAlpha = Mathf.Max(alphaRatio, minAlpha);
 
             int t1 = (headIndex1 - i + lights.Count) % lights.Count;
-            SetLightAlpha(lights[t1], finalAlpha);
+            SetLightColorWithAlpha(lights[t1], finalAlpha);
 
             int t2 = (headIndex2 - i + lights.Count) % lights.Count;
-            CircleLight l2 = lights[t2];
-            if (l2.SpriteRenderer.color.a < finalAlpha) SetLightAlpha(l2, finalAlpha);
+            SetLightColorWithAlpha(lights[t2], finalAlpha);
         }
     }
 
-    private void UpdateLights(float headPosition)
+    // --- YARDIMCI VE ÇEKİRDEK METOTLAR ---
+
+    void ChangeBaseColor(Color c)
     {
-        _lastSnakeHeadPosition = headPosition;
+        _currentBaseColor = c;
+    }
 
-        int headIndex = Mathf.FloorToInt(headPosition) % lights.Count;
-
-        for(int i = 0; i < lights.Count; i++) SetLightAlpha(lights[i], minAlpha);
-
-        for(int i = 0; i < snakeLength; i++)
+    private void UpdateAllLightsAlpha(float alpha)
+    {
+        foreach (var l in lights)
         {
-            int targetIndex = (headIndex - i + lights.Count) % lights.Count;
-            float alphaRatio = 1f - ((float)i / snakeLength);
-            float finalAlpha = Mathf.Max(alphaRatio, minAlpha);
-            SetLightAlpha(lights[targetIndex], finalAlpha);
+            SetLightColorWithAlpha(l, alpha);
         }
+    }
+
+    private void SetLightColorWithAlpha(CircleLight lightObj, float alpha)
+    {
+        if (lightObj == null || lightObj.SpriteRenderer == null) return;
+
+        Renderer r = lightObj.SpriteRenderer;
+
+        r.GetPropertyBlock(_propBlock);
+
+        Color finalColor = _currentBaseColor;
+        finalColor.a = alpha;
+
+        _propBlock.SetColor(GlowColorId, finalColor);
+        _propBlock.SetColor(ShapeColorId, finalColor);
+
+        r.SetPropertyBlock(_propBlock);
     }
 
     private void KillActiveTweens()
     {
-        breathe?.Kill();
-        snakeTween?.Kill();
-    }
-
-    void ChangeColor(Color c)
-    {
-        foreach (var circleLight in lights)
-        {
-            circleLight.SpriteRenderer.material.SetColor("_GlowColor", c);
-        }
-    }
-
-    private void SetLightAlpha(CircleLight lightObj, float alpha)
-    {
-        if (lightObj != null && lightObj.SpriteRenderer != null)
-        {
-            Color c = lightObj.SpriteRenderer.color;
-            c.a = alpha;
-            lightObj.SpriteRenderer.color = c;
-        }
-    }
-
-    private void ResetAllLights()
-    {
-        foreach (var l in lights) SetLightAlpha(l, minAlpha);
+        if(breatheTween != null) breatheTween.Kill();
+        if(snakeTween != null) snakeTween.Kill();
+        if(blinkTween != null) blinkTween.Kill();
     }
 
     enum Status

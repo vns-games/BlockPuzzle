@@ -7,9 +7,9 @@ public static class GridLogic
     // --- 1. YERLEŞTİRME KURALLARI ---
     public static bool IsGridEmpty(this Grid grid)
     {
-        for (int x = 0; x < grid.Width; x++)
+        for(int x = 0; x < grid.Width; x++)
         {
-            for (int y = 0; y < grid.Height; y++)
+            for(int y = 0; y < grid.Height; y++)
             {
                 // Eğer tek bir hücre bile doluysa (true ise), grid boş değildir.
                 if (grid.Cells[x, y]) return false;
@@ -80,7 +80,7 @@ public static class GridLogic
     }
 
     // Satır ve Sütunları tarar, temizler ve temizlenen sayıyı döner
-    public static int CheckAndClearMatches(this Grid grid, out int totalLines)
+    public static int CheckAndClearMatches(this Grid grid, out int totalLines, BlockColorType colorType)
     {
         List<int> rowsToClear = new List<int>();
         List<int> colsToClear = new List<int>();
@@ -149,6 +149,7 @@ public static class GridLogic
                     if (grid.Visuals[x, y] != null)
                     {
                         VisualCell cell = grid.Visuals[x, y].GetComponent<VisualCell>();
+                        ParticleManager.Instance.PlayEffect(x, y, colorType);
                         StaticCellPool.Despawn(cell);
                         grid.Visuals[x, y] = null;
                     }

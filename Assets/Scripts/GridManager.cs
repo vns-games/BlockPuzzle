@@ -52,6 +52,7 @@ public partial class GridManager : Singleton<GridManager>
         Debug.Log("GRID: Level oluşturuluyor...");
         GenerateInitialLevel();
         BlockSpawner.Instance.StartGame();
+        ParticleManager.Instance.Initialize(width, height);
     }
 
     public void GenerateInitialLevel()
@@ -126,7 +127,7 @@ public partial class GridManager : Singleton<GridManager>
             }
         }
 
-        int blocksPopped = LevelGrid.CheckAndClearMatches(out int linesCleared);
+        int blocksPopped = LevelGrid.CheckAndClearMatches(out int linesCleared,colorType);
 
         if (blocksPopped > 0)
         {

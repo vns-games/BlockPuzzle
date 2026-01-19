@@ -7,7 +7,7 @@ public enum SpawnerMode
 {
     None,
     Relax,
-    WarmUp, 
+    WarmUp,
     Critical,
     SmartHelp,
     SkillBased
@@ -31,15 +31,15 @@ public class BlockSpawner : Singleton<BlockSpawner>
     public Vector2Int warmUpMovesRange = new Vector2Int(20, 40);
 
     // STATE Variables
-    private int _totalMovesPlayed = 0;      
-    private int _targetWarmUpMoves;         
-    private float _currentStartThreshold;   
+    private int _totalMovesPlayed = 0;
+    private int _targetWarmUpMoves;
+    private float _currentStartThreshold;
 
     private SpawnerMode _currentMode = SpawnerMode.None;
     private List<DraggableBlock> _activeBlocks = new();
-    
+
     [Header("Reward Settings")]
-    public int rewardMovesPerLine = 2; 
+    public int rewardMovesPerLine = 2;
 
     public void StartGame()
     {
@@ -48,27 +48,27 @@ public class BlockSpawner : Singleton<BlockSpawner>
         _currentStartThreshold = Random.Range(startThresholdRange.x, startThresholdRange.y);
         _targetWarmUpMoves = Random.Range(warmUpMovesRange.x, warmUpMovesRange.y);
         Debug.Log($"<color=cyan>[SESSION]</color> Move Target: {_targetWarmUpMoves} | Start Threshold: {_currentStartThreshold:F2}");
-        
+
         // BAŞLANGIÇ KONTROLÜ: Yatay parça var mı diye bakalım
         CheckForHorizontalBlock();
 
         SpawnSet();
     }
-    
+
     // DEBUG İÇİN: Listende gerçekten yatay parça var mı?
     private void CheckForHorizontalBlock()
     {
         bool found = false;
-        foreach(var shape in allShapes)
+        foreach (var shape in allShapes)
         {
             var m = shape.ToMatrix().Trim();
-            if(m.GetLength(0) == 3 && m.GetLength(1) == 2) // 3 Genişlik, 2 Yükseklik
+            if (m.GetLength(0) == 3 && m.GetLength(1) == 2) // 3 Genişlik, 2 Yükseklik
             {
                 Debug.Log($"<color=green>[DATA CHECK] Yatay 3x2 Parça Listede Var: {shape.name}</color>");
                 found = true;
             }
         }
-        if(!found) Debug.LogError("<color=red>[DATA CHECK] DİKKAT! Listede 3x2 (Yatay) parça bulunamadı! Incredible çalışmaz.</color>");
+        if (!found) Debug.LogError("<color=red>[DATA CHECK] DİKKAT! Listede 3x2 (Yatay) parça bulunamadı! Incredible çalışmaz.</color>");
     }
 
     public void ActivateReviveMode()
@@ -97,13 +97,30 @@ public class BlockSpawner : Singleton<BlockSpawner>
 
     private List<BlockShapeSO> GetPoolForMode(SpawnerMode mode, Grid grid)
     {
-        switch (mode)
+        switch(mode)
         {
-            case SpawnerMode.Relax: return GetRelaxPool(grid);
-            case SpawnerMode.WarmUp: return GetWarmUpPool(grid); 
-            case SpawnerMode.Critical: return ShapeFinder.GetFits(grid, easyShapes);
-            case SpawnerMode.SmartHelp: return ShapeFinder.GetHoleFillers(grid, allShapes, 0.7f);
-            default: return ShapeFinder.GetFits(grid, allShapes);
+            // RELAX: Stres yok. Tüm şekiller gelebilir ama "Dolgun" (Mass >= 3) olsunlar.
+            // 1x1 gelip keyif kaçırmasın.
+            case SpawnerMode.Relax: 
+                return ShapeFinder.GetSatisfyingFits(grid, allShapes);
+
+            // WARMUP: Isınma turu. Sadece "Temiz/Düzgün" şekiller (cleanShapes) ve "Dolgun" olanlar.
+            // Oyuncuya "Güzel başladık" hissi vermek için.
+            case SpawnerMode.WarmUp: 
+                return ShapeFinder.GetSatisfyingFits(grid, cleanShapes);
+
+            // CRITICAL: Can pazarı! Sadece sığması en kolay (easyShapes) parçalar.
+            // Burada 1x1 gelmesi serbesttir (Can simidi niyetine).
+            case SpawnerMode.Critical: 
+                return ShapeFinder.GetFits(grid, easyShapes);
+
+            // SMART HELP: Aradaki delikleri "Cuk" diye kapatacak parçalar.
+            case SpawnerMode.SmartHelp: 
+                return ShapeFinder.GetHoleFillers(grid, allShapes, 0.7f);
+
+            // DEFAULT: Sığan ne varsa getir.
+            default: 
+                return ShapeFinder.GetFits(grid, allShapes);
         }
     }
 
@@ -132,7 +149,7 @@ public class BlockSpawner : Singleton<BlockSpawner>
             Debug.Log($"<color=magenta>[PROFILE]</color> Strategy: <b>HOLE FILLER</b> (Count: {keys.Count})");
             return keys;
         }
-        
+
         var cleanKillers = ShapeFinder.GetCleanKillers(grid, allCandidates);
         if (cleanKillers.Count > 0)
         {
@@ -153,7 +170,7 @@ public class BlockSpawner : Singleton<BlockSpawner>
 
     private void ShuffleList<T>(List<T> list)
     {
-        for (int i = 0; i < list.Count; i++)
+        for(int i = 0; i < list.Count; i++)
         {
             var temp = list[i];
             int randomIndex = Random.Range(i, list.Count);
@@ -177,11 +194,11 @@ public class BlockSpawner : Singleton<BlockSpawner>
         if (saviors.Count == 0) saviors = GridManager.Instance.GetGapFillingShapes(allShapes);
 
         List<BlockShapeSO> batch = new List<BlockShapeSO>();
-        for (int i = 0; i < slots.Length; i++)
+        for(int i = 0; i < slots.Length; i++)
             if (saviors.Count > 0)
                 batch.Add(saviors[Random.Range(0, saviors.Count)]);
 
-        for (int i = 0; i < batch.Count; i++)
+        for(int i = 0; i < batch.Count; i++)
         {
             var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
             b.Initialize(batch[i]);
@@ -189,7 +206,7 @@ public class BlockSpawner : Singleton<BlockSpawner>
         }
     }
 
-  public BlockShapeSO FindGuaranteedFullClearBlock()
+    public BlockShapeSO FindGuaranteedFullClearBlock()
     {
         var grid = GridManager.Instance.LevelGrid;
         int w = grid.Width;
@@ -199,16 +216,17 @@ public class BlockSpawner : Singleton<BlockSpawner>
         BlockShapeSO bestCandidate = null;
         int maxCellCount = -1; // En çok dolu hücresi olanı tutacağız
 
-        foreach (var blockShape in allShapes) 
+        foreach (var blockShape in allShapes)
         {
             var rawMatrix = blockShape.ToMatrix().Trim();
             BlockData blockData = new BlockData(rawMatrix);
 
             // 1. ADIM: Bu parçanın kaç hücresi dolu? (Density Check)
             int currentCellCount = 0;
-            for(int i=0; i<blockData.Width; i++)
-                for(int j=0; j<blockData.Height; j++)
-                    if(blockData.Matrix[i,j]) currentCellCount++;
+            for(int i = 0; i < blockData.Width; i++)
+                for(int j = 0; j < blockData.Height; j++)
+                    if (blockData.Matrix[i, j])
+                        currentCellCount++;
 
             // 1x1 BLOK ENGELİ
             if (currentCellCount <= 1) continue;
@@ -218,16 +236,16 @@ public class BlockSpawner : Singleton<BlockSpawner>
             // (Amaç en dolu parçayı bulmak)
             // NOT: İlk başta aday yokken (maxCellCount -1) her türlü deneriz.
             bool worthChecking = (bestCandidate == null) || (currentCellCount > maxCellCount);
-            
+
             if (!worthChecking) continue;
 
             // 2. ADIM: Simülasyon
             bool fitsAndClears = false;
 
             // Parçayı her noktada dene
-            for (int x = 0; x < w; x++)
+            for(int x = 0; x < w; x++)
             {
-                for (int y = 0; y < h; y++)
+                for(int y = 0; y < h; y++)
                 {
                     if (CanSimulatePlace(grid, blockData, x, y))
                     {
@@ -239,7 +257,7 @@ public class BlockSpawner : Singleton<BlockSpawner>
                     }
                 }
             }
-            EndSimulation:;
+            EndSimulation: ;
 
             // 3. ADIM: Eğer işe yarıyorsa ve daha "dolu" bir parçaysa, yeni kral bu!
             if (fitsAndClears)
@@ -248,12 +266,12 @@ public class BlockSpawner : Singleton<BlockSpawner>
                 {
                     maxCellCount = currentCellCount;
                     bestCandidate = blockShape;
-                    
+
                     // İsteğe bağlı: Eğer favori parçan buysa direkt döndür
-                    if (blockShape.name == "2x3_1") 
+                    if (blockShape.name == "2x3_1")
                     {
-                         Debug.Log($"<color=green>[BINGO!]</color> Favori parça (2x3_1) bulundu ve full dolu!");
-                         return blockShape;
+                        Debug.Log($"<color=green>[BINGO!]</color> Favori parça (2x3_1) bulundu ve full dolu!");
+                        return blockShape;
                     }
                 }
             }
@@ -265,18 +283,18 @@ public class BlockSpawner : Singleton<BlockSpawner>
             return bestCandidate;
         }
 
-        return null; 
+        return null;
     }
     private bool CanSimulatePlace(Grid grid, BlockData data, int gx, int gy)
     {
         if (gx + data.Width > grid.Width || gy + data.Height > grid.Height) return false;
 
-        for (int x = 0; x < data.Width; x++)
+        for(int x = 0; x < data.Width; x++)
         {
-            for (int y = 0; y < data.Height; y++)
+            for(int y = 0; y < data.Height; y++)
             {
                 if (data.Matrix[x, y] && grid.Cells[gx + x, gy + y])
-                    return false; 
+                    return false;
             }
         }
         return true;
@@ -289,78 +307,149 @@ public class BlockSpawner : Singleton<BlockSpawner>
         int h = originalGrid.Height;
 
         // Place
-        for (int x = 0; x < data.Width; x++)
-            for (int y = 0; y < data.Height; y++)
-                if (data.Matrix[x, y]) simCells[gx + x, gy + y] = true;
+        for(int x = 0; x < data.Width; x++)
+            for(int y = 0; y < data.Height; y++)
+                if (data.Matrix[x, y])
+                    simCells[gx + x, gy + y] = true;
 
         // Identify Lines (Hem Satır Hem Sütun)
         List<int> rowsToClear = new List<int>();
         List<int> colsToClear = new List<int>();
 
         // Satır Kontrol
-        for (int y = 0; y < h; y++)
+        for(int y = 0; y < h; y++)
         {
             bool full = true;
-            for (int x = 0; x < w; x++) { if (!simCells[x, y]) { full = false; break; } }
+            for(int x = 0; x < w; x++)
+            {
+                if (!simCells[x, y])
+                {
+                    full = false;
+                    break;
+                }
+            }
             if (full) rowsToClear.Add(y);
         }
 
         // Sütun Kontrol (Block Puzzle Mantığı)
-        for (int x = 0; x < w; x++)
+        for(int x = 0; x < w; x++)
         {
             bool full = true;
-            for (int y = 0; y < h; y++) { if (!simCells[x, y]) { full = false; break; } }
+            for(int y = 0; y < h; y++)
+            {
+                if (!simCells[x, y])
+                {
+                    full = false;
+                    break;
+                }
+            }
             if (full) colsToClear.Add(x);
         }
 
         // Clear
-        foreach (int r in rowsToClear) for (int x = 0; x < w; x++) simCells[x, r] = false;
-        foreach (int c in colsToClear) for (int y = 0; y < h; y++) simCells[c, y] = false;
+        foreach (int r in rowsToClear)
+            for(int x = 0; x < w; x++)
+                simCells[x, r] = false;
+        foreach (int c in colsToClear)
+            for(int y = 0; y < h; y++)
+                simCells[c, y] = false;
 
         // Check Empty
-        for (int x = 0; x < w; x++)
-            for (int y = 0; y < h; y++)
-                if (simCells[x, y]) return false; 
+        for(int x = 0; x < w; x++)
+            for(int y = 0; y < h; y++)
+                if (simCells[x, y])
+                    return false;
 
-        return true; 
+        return true;
     }
 
     public void SpawnSet()
     {
         _totalMovesPlayed++;
 
+        // 1. Temizlik
         foreach (var b in _activeBlocks) if (b) Destroy(b.gameObject);
         _activeBlocks.Clear();
 
         Grid grid = GridManager.Instance.LevelGrid;
-        float fill = grid.GetFillPercentage();
-
-        SpawnerMode calculatedMode = DetermineMode(fill);
-
-        Debug.Log($"<color=yellow>[SPAWNER]</color> Mode: <b>{calculatedMode}</b> | Fill: %{fill*100:F1} | Moves: {_totalMovesPlayed}");
-
-        _currentMode = calculatedMode;
-
-        // 1. Savior Block
+        
+        // --------------------------------------------------------------------
+        // ADIM 1: MUTLAK ÖNCELİK (INCREDIBLE SAVIOR)
+        // --------------------------------------------------------------------
         BlockShapeSO rescueBlock = FindGuaranteedFullClearBlock();
 
-        // 2. Pools
-        List<BlockShapeSO> primaryPool = GetPoolForMode(calculatedMode, grid);
-        List<BlockShapeSO> secondaryRaw = (calculatedMode == SpawnerMode.Relax || calculatedMode == SpawnerMode.WarmUp)
-            ? cleanShapes
-            : allShapes;
-        List<BlockShapeSO> secondaryPool = ShapeFinder.GetFits(grid, secondaryRaw);
+        List<BlockShapeSO> primaryPool = null; // Başlangıçta null
+        List<BlockShapeSO> secondaryPool;
 
-        // 3. Batch
-        List<BlockShapeSO> batch = GenerateUniqueBatch(grid, primaryPool, secondaryPool, slots.Length);
-
-        // 4. Inject Savior
         if (rescueBlock != null)
         {
+            Debug.Log($"<color=green>[PRIORITY]</color> INCREDIBLE SAVIOR DEVREDE!");
+            primaryPool = ShapeFinder.GetFits(grid, cleanShapes); // Yanına temiz parçalar ver
+            if (primaryPool.Count == 0) primaryPool = ShapeFinder.GetFits(grid, allShapes);
+            _currentMode = SpawnerMode.SkillBased;
+        }
+        else
+        {
+            // Savior yoksa, mod hesapla
+            float fill = grid.GetFillPercentage();
+            SpawnerMode calculatedMode = DetermineMode(fill);
+
+            // --------------------------------------------------------------------
+            // ADIM 2: KRİTİK MOD İSTİSNASI (MEGA KILL FIRSATI)
+            // Eğer mod "Critical" veya "Danger" ise ve tahtada Mega Kill şansı varsa,
+            // oyuncuyu küçük taşlarla sıkmak yerine ona o şansı ver!
+            // --------------------------------------------------------------------
+            if (calculatedMode == SpawnerMode.Critical)
+            {
+                // Mega Kill yapabilecek bir parça var mı?
+                BlockShapeSO megaKiller = ShapeFinder.FindPotentialMegaKiller(grid, allShapes);
+
+                if (megaKiller != null)
+                {
+                    Debug.Log($"<color=orange>[OPPORTUNITY]</color> Kritik Moddayız ama MEGA KILL şansı var! ({megaKiller.name})");
+                    
+                    // Modu geçici olarak SkillBased veya Relax yapalım ki büyük taş gelebilsin
+                    // Veya direkt bu taşı havuza zorla ekleyebiliriz.
+                    
+                    // Yöntem A: Modu Yükselt (Daha riskli ama heyecanlı)
+                    // calculatedMode = SpawnerMode.SkillBased; 
+
+                    // Yöntem B: Taşı Rezerve Et (Daha güvenli)
+                    // Rescue block mantığı gibi bu taşı batch[0]'a koyacağız.
+                    rescueBlock = megaKiller; 
+                }
+            }
+
+            Debug.Log($"<color=yellow>[SPAWNER]</color> Mode: <b>{calculatedMode}</b> | Fill: %{fill*100:F1}");
+            _currentMode = calculatedMode;
+
+            // Havuzu şimdi oluştur (Eğer yukarıda atama yapmadıysak)
+            if (primaryPool == null)
+            {
+                primaryPool = GetPoolForMode(calculatedMode, grid);
+            }
+        }
+
+        // ====================================================================
+        // ADIM 3: BATCH OLUŞTURMA
+        // ====================================================================
+        secondaryPool = ShapeFinder.GetFits(grid, allShapes);
+        
+        // Eğer primaryPool boş geldiyse (bazen olur), secondary'den doldur
+        if (primaryPool == null || primaryPool.Count == 0) primaryPool = new List<BlockShapeSO>(secondaryPool);
+
+        List<BlockShapeSO> batch = GenerateUniqueBatch(grid, primaryPool, secondaryPool, slots.Length);
+
+        // ====================================================================
+        // ADIM 4: KURTARICI VEYA MEGA KILLER ENJEKSİYONU
+        // ====================================================================
+        if (rescueBlock != null)
+        {
+            // Eğer yukarıda Incredible veya Mega Killer bulduysak, ilk sıraya koy.
             batch[0] = rescueBlock;
         }
 
-        // 5. Spawn
+        // Spawn...
         for (int i = 0; i < batch.Count; i++)
         {
             var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
@@ -408,7 +497,7 @@ public class BlockSpawner : Singleton<BlockSpawner>
         if (finalBatch.Count < count)
         {
             var easyFits = ShapeFinder.GetFits(grid, easyShapes);
-            while (finalBatch.Count < count && easyFits.Count > 0)
+            while(finalBatch.Count < count && easyFits.Count > 0)
             {
                 var s = easyFits[Random.Range(0, easyFits.Count)];
                 finalBatch.Add(s);
@@ -458,7 +547,8 @@ public class BlockSpawner : Singleton<BlockSpawner>
     private void ClearActiveBlocks()
     {
         foreach (var b in _activeBlocks)
-            if (b) Destroy(b.gameObject);
+            if (b)
+                Destroy(b.gameObject);
         _activeBlocks.Clear();
     }
 }
