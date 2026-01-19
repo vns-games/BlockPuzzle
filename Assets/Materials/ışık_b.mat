@@ -7,15 +7,13 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: "\u0131\u015F\u0131k"
+  m_Name: "\u0131\u015F\u0131k_b"
   m_Shader: {fileID: 4800000, guid: 6eb86e4931b506a408fd1477edec61ea, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - ADDITIVECONFIG_ON
   - GLOWTEX_ON
-  - GLOW_ON
-  - MASK_ON
   - SHAPE2_ON
   - SHAPEADD_ON
   m_InvalidKeywords: []
@@ -74,7 +72,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape2Tex:
-        m_Texture: {fileID: 2800000, guid: 75c822b01a637d547abc69e6f1f590b4, type: 3}
+        m_Texture: {fileID: 2800000, guid: 1b2970a114ab1614d99a18ce46d4f458, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape3DistortTex:
@@ -135,7 +133,7 @@ Material:
     - _FadeScrollXSpeed: 0
     - _FadeScrollYSpeed: 0
     - _FadeTransition: 0.075
-    - _Glow: 1.05
+    - _Glow: 10
     - _GlowGlobal: 1
     - _HandDrawnAmount: 10
     - _HandDrawnSpeed: 5
@@ -143,7 +141,7 @@ Material:
     - _HsvSaturation: 1
     - _HsvShift: 180
     - _LightAmount: 0
-    - _MaskPow: 0.34
+    - _MaskPow: 1
     - _OffsetSh1: 1
     - _OffsetSh2: 1
     - _OffsetSh3: 1
@@ -174,9 +172,9 @@ Material:
     - _ShakeUvX: 5
     - _ShakeUvY: 4
     - _Shape1MaskPow: 1
-    - _Shape2AlphaWeight: 1.06
+    - _Shape2AlphaWeight: 1.15
     - _Shape2Brightness: 0
-    - _Shape2ColorWeight: 1.06
+    - _Shape2ColorWeight: 1.15
     - _Shape2Contrast: 1
     - _Shape2DistortAmount: 0.5
     - _Shape2DistortXSpeed: 0.1
@@ -240,7 +238,7 @@ Material:
     - _GlowColor: {r: 0.12012029, g: 1, b: 0, a: 1}
     - _LightColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Shape2Color: {r: 0.109803915, g: 1, b: 0, a: 1}
+    - _Shape2Color: {r: 1, g: 1, b: 1, a: 1}
     - _Shape3Color: {r: 1, g: 1, b: 1, a: 1}
     - _ShapeColor: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []
