@@ -7,7 +7,7 @@ using VnS.Utility.Singleton;
 
 public class ScoreManager : Singleton<ScoreManager>
 {
-    public static event Action<int> OnCombo;
+    public static event Action<int> OnCombo, OnBestScoreChanged, OnScoreChanged;
     public static event Action OnIncredible, OnBestScore;
     [Header("UI References")]
     public TextMeshProUGUI scoreText;     // Puanın yazdığı Text
@@ -22,14 +22,33 @@ public class ScoreManager : Singleton<ScoreManager>
     private int _movesSinceLastClear = 100;
     public int Multiplier => _multiplier;
     private int _bestScore;
+
+    private int BestScore
+    {
+        get => _bestScore;
+        set
+        {
+            _bestScore = value;
+            OnBestScoreChanged?.Invoke(_bestScore);
+        }
+    }
+    public int CurrentScore
+    {
+        get => _currentScore;
+        private set
+        {
+            _currentScore = value;
+            OnScoreChanged?.Invoke(_currentScore);
+        }
+    }
     private bool _beatedBestScore;
     public void Initialize()
     {
         _beatedBestScore = false;
         _movesSinceLastClear = 100;
         _multiplier = 1;
-        _currentScore = 0;
-        _bestScore = PlayerPrefs.GetInt("BestScore");
+        CurrentScore = 0;
+        BestScore = PlayerPrefs.GetInt("BestScore");
     }
 
     /// <summary>

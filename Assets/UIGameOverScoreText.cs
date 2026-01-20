@@ -12,6 +12,6 @@ public class UIGameOverScoreText : MonoBehaviour
     }
     private void OnEnable()
     {
-        _text.text = ScoreManager.Instance.scoreText.text;
+        _text.text = "SCORE: " + ScoreManager.Instance.CurrentScore;
     }
 }

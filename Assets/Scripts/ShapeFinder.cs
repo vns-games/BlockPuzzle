@@ -57,44 +57,20 @@ public static class ShapeFinder
     public static List<BlockShapeSO> GetLargePerfectFits(Grid grid, List<BlockShapeSO> candidates, float threshold)
     {
         var list = new List<BlockShapeSO>();
-        var solidFits = new List<BlockShapeSO>(); // Tam dolu olanlar (Kare, Çubuk)
 
         foreach (var shape in candidates)
         {
             BlockData data = new BlockData(shape.ToMatrix().Trim());
 
-            // 1. KÜTLE KONTROLÜ (Çok küçük parçaları ele)
+            // 1x1 veya 2x1 gibi küçük parçaları ele (Tetris hissi için büyük parça lazım)
             int mass = CountMass(data);
             if (mass < 3) continue;
 
-            // 2. TEMAS KONTROLÜ
+            // En iyi temas oranını bul
             float bestRatio = GetBestContactRatio(grid, data);
-            
-            if (bestRatio >= threshold)
-            {
-                // BURASI YENİ:
-                // Parça tam bir dikdörtgen mi? (Deliksiz mi?)
-                // Örn: 3x3 Kare -> Alan 9, Kütle 9 -> TAM DOLU
-                // Örn: U Şekli -> Alan 9, Kütle 7 -> EKSİK
-                int area = data.Width * data.Height;
-                bool isSolid = (mass == area);
 
-                if (isSolid)
-                {
-                    solidFits.Add(shape); // Öncelikli listeye ekle
-                }
-                else
-                {
-                    list.Add(shape); // Normal listeye ekle
-                }
-            }
+            if (bestRatio >= threshold) list.Add(shape);
         }
-
-        // Eğer tam dolu (Solid) parça bulduysak SADECE onları döndür.
-        // Böylece U şekli yerine Kare şekli gelir.
-        if (solidFits.Count > 0) return solidFits;
-
-        // Yoksa diğerlerini döndür
         return list;
     }
 
@@ -317,67 +293,5 @@ public static class ShapeFinder
             }
         }
         return (mass * 4) - (internalAdjacency * 2);
-    }
-    
-    public static BlockShapeSO FindPotentialMegaKiller(Grid grid, List<BlockShapeSO> allShapes)
-    {
-        // Tüm şekilleri tara
-        foreach (var shape in allShapes)
-        {
-            BlockData data = new BlockData(shape.ToMatrix().Trim());
-            
-            // Çok küçük parçalarla zaten Mega Kill olmaz, performans için atla
-            if (data.Width < 2 && data.Height < 2) continue;
-
-            // Bu parça tahtada bir yere konduğunda 3 veya daha fazla satır siliyor mu?
-            int potentialClear = GetMaxPotentialClear(grid, data);
-
-            if (potentialClear >= 3)
-            {
-                // Evet! Bu parça bir kahraman.
-                return shape;
-            }
-        }
-        return null;
-    }
-    
-    /// <summary>
-    /// [WARMUP ÖZEL]
-    /// Sadece gride sığanları bulur AMA küçük parçaları (1x1, 2x1) eler.
-    /// Eğer sığacak büyük parça yoksa, mecburen küçükleri verir (Oyun tıkanmasın diye).
-    /// </summary>
-    public static List<BlockShapeSO> GetSatisfyingFits(Grid grid, List<BlockShapeSO> candidates)
-    {
-        var allFits = new List<BlockShapeSO>();
-        var meatyFits = new List<BlockShapeSO>(); // "Etli/Dolgun" parçalar (Mass >= 3)
-
-        foreach (var shape in candidates)
-        {
-            var rawMatrix = shape.ToMatrix().Trim();
-            BlockData data = new BlockData(rawMatrix);
-
-            // Önce sığıyor mu diye bak?
-            if (grid.CanFitAnywhere(data))
-            {
-                allFits.Add(shape);
-
-                // Şimdi "Tatmin Edici" mi diye bak (Hücre sayısı 3 veya daha fazla mı?)
-                // 1x1 (Mass 1) ve 2x1 (Mass 2) buraya giremez.
-                if (CountMass(data) >= 3)
-                {
-                    meatyFits.Add(shape);
-                }
-            }
-        }
-
-        // KURAL: Eğer elimizde sığan "Büyük" parçalar varsa, sadece onları döndür.
-        // Böylece oyuncu 1x1 gibi gıcık parçaları görmez.
-        if (meatyFits.Count > 0)
-        {
-            return meatyFits;
-        }
-
-        // Eğer büyük parça sığmıyorsa (alan çok darsa), mecburen ne varsa onu döndür.
-        return allFits;
     }
 }

@@ -21,7 +21,7 @@ public class UIReviveArea : MonoBehaviour
     {
         int seconds = 5;
 
-       _tween = DOVirtual.Int(seconds, 0, seconds, value => countdownText.text = value + "").OnComplete(OnTimeIsUp);
+       _tween = DOVirtual.Int(seconds, 0, seconds, value => countdownText.text = value + "").OnComplete(OnTimeIsUp).SetEase(Ease.Linear);
     }
     private void OnTimeIsUp()
     {

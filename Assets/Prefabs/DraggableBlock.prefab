@@ -80,7 +80,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   visualRoot: {fileID: 8131255184211277938}
   visualCellPrefab: {fileID: 7234884086888280893, guid: 37bd5e38d59ce1547897c3417d395c8e, type: 3}
-  hitboxSize: {x: 2, y: 2}
+  hitboxSize: {x: 2.25, y: 2.25}
   maxSlotDimension: 1
   dragOffsetY: 2
   moveDuration: 0.3

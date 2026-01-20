@@ -15,7 +15,7 @@ public class GameManager : Singleton<GameManager>
     {
         _hasUsedRevive = false;
         Debug.Log("GAME MANAGER: Başlatma sekansı çalışıyor...");
-
+        ScoreManager.Instance.Initialize();
         // 2. SONRA GRİDİ OLUŞTUR (Havuzdan parça çekecek)
         GridManager.Instance.Initialize();
 
