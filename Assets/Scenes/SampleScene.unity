@@ -2487,26 +2487,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9f798b1d7795f784f879a84caa5b3a00, type: 2}
   - {fileID: 11400000, guid: 0b9fe991776cd5d43848f198ea1e48d7, type: 2}
   - {fileID: 11400000, guid: 16215eb37092ddb459c5c13ba6a2613f, type: 2}
-  easyShapes:
-  - {fileID: 11400000, guid: 50bd807134f9a2746ae823951f22765d, type: 2}
-  - {fileID: 11400000, guid: a0f6e1b1972d14a4ea93ebe6739754dc, type: 2}
-  - {fileID: 11400000, guid: 50f1cdbf406e19341b6a744451ff8aa3, type: 2}
-  - {fileID: 11400000, guid: 18bd253159500c041aff0a64fecddc9a, type: 2}
-  - {fileID: 11400000, guid: 801853296820e954aa4ae2d6b954dd86, type: 2}
-  - {fileID: 11400000, guid: 37b30e5e6830b4448a441d9963bd7758, type: 2}
-  - {fileID: 11400000, guid: 4532bf050453fa442b9e860c0846ea07, type: 2}
-  - {fileID: 11400000, guid: f5b7719123d244a498466f1e8ef7b1ec, type: 2}
-  - {fileID: 11400000, guid: 8d2b979bba2ef41458fadfa569c0f69a, type: 2}
-  - {fileID: 11400000, guid: 64bf3d1d7a183474b89f6a931aeb5126, type: 2}
   blockPrefab: {fileID: 165353350420587251, guid: a51d0a275e8b6c84aad65984a6b659c8, type: 3}
   slots:
   - {fileID: 1612222149}
   - {fileID: 2022002553}
   - {fileID: 636831221}
-  criticalThreshold: 0.85
-  startThresholdRange: {x: 0.9, y: 0.99}
-  minThreshold: 0.95
-  warmUpMovesRange: {x: 40, y: 80}
   rewardMovesPerLine: 2
 --- !u!4 &314417128
 Transform:
@@ -2521,9 +2506,9 @@ Transform:
   m_LocalScale: {x: 0.4142546, y: 0.4142546, z: 0.4142546}
   m_ConstrainProportionsScale: 1
   m_Children:
-  - {fileID: 1612222149}
   - {fileID: 2022002553}
   - {fileID: 636831221}
+  - {fileID: 1612222149}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &314417129

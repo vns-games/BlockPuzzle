@@ -195,4 +195,6 @@ public partial class GridManager : Singleton<GridManager>
         // Güç (strength): Ne kadar sert sallanacak? (0.5f hafif, 1.0f sert)
         visualRoot.DOShakePosition(0.4f, strength, 20, 90, false, true);
     }
+    // BU KODU GRIDMANAGER CLASS'ININ İÇİNE YAPIŞTIR
+   
 }
