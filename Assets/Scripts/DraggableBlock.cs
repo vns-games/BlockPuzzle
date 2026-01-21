@@ -2,7 +2,6 @@ using UnityEngine;
 using DG.Tweening;
 using System.Collections.Generic;
 
-// ARTIK KUTU COLLIDER İSTİYORUZ
 [RequireComponent(typeof(BoxCollider2D))]
 public class DraggableBlock : MonoBehaviour
 {
@@ -13,49 +12,53 @@ public class DraggableBlock : MonoBehaviour
     private Vector3 _startPosition;
     private BlockColorType _myColor;
     
+    // --- HINT (İPUCU) ---
+    private Vector2Int _hintPosition; 
+    private BlockShapeSO _shapeData; 
+    
     [Header("Visual Settings")]
     public Transform visualRoot;
     public VisualCell visualCellPrefab;
     
     [Header("Hitbox & Scaling")]
-    public Vector2 hitboxSize = new Vector2(4f, 4f); // Tıklama alanı boyutu (Büyük Kare)
-    public float maxSlotDimension = 2.5f; // Slot içindeyken blok en fazla kaç birim yer kaplasın?
-    public float dragOffsetY = 1.5f;      // Sürüklerken parmağın ne kadar üstünde olsun?
+    public Vector2 hitboxSize = new Vector2(4f, 4f); 
+    public float maxSlotDimension = 2.5f; 
+    public float dragOffsetY = 2.0f; 
     public float moveDuration = 0.3f;  
 
     private List<VisualCell> _spawnedCells = new List<VisualCell>();
-
-    private BoxCollider2D _col; // Polygon yerine Box
-    private Vector3 _slotScale; // Hesaplanan küçültülmüş boyut
+    private BoxCollider2D _col; 
+    private Vector3 _slotScale; 
     
+    // GridManager ve SENİN BLOCKGHOST SINIFIN
     private GridManager _grid => GridManager.Instance;
-    private BlockGhost _ghost => BlockGhost.Instance;
+    private BlockGhost _ghost => BlockGhost.Instance; 
 
     void Awake()
     {
         _col = GetComponent<BoxCollider2D>();
-        // Collider'ı tetikleyici yap ki fizik motoruyla çarpışıp sağa sola uçmasın
         _col.isTrigger = true; 
     }
 
     void Start()
     {
         _startPosition = transform.position;
-        // Başlangıçta hesaplanan slot ölçeğinde olsun (Initialize'da hesaplanacak)
     }
 
-    public void Initialize(BlockShapeSO so)
+    public void Initialize(BlockShapeSO so, Vector2Int bestFitPos)
     {
+        _shapeData = so;
+        _hintPosition = bestFitPos;
         SourceSO = so;
+        
         var matrix = so.ToMatrix().Trim();
         _currentData = new BlockData(matrix);
 
         int colorCount = System.Enum.GetValues(typeof(BlockColorType)).Length;
-        // Renk Initialize'da belirlenir ve sabit kalır
         _myColor = (BlockColorType)Random.Range(0, colorCount);
 
         RebuildVisual();
-        UpdateHitboxAndScale(); // <-- YENİ FONKSİYON
+        UpdateHitboxAndScale(); 
     }
     
     public BlockData GetData() => _currentData;
@@ -68,9 +71,6 @@ public class DraggableBlock : MonoBehaviour
         if (_currentData == null) return;
 
         float s = _grid.cellSize;
-        
-        // Görselleri merkeze hizalamak için ofset hesabı
-        // Bu sayede blok görseli (0,0) noktasında ortalanır
         Vector3 offset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
         Vector3 halfCell = new Vector3(s / 2f, s / 2f, 0);
 
@@ -90,70 +90,37 @@ public class DraggableBlock : MonoBehaviour
         }
     }
 
- // --- GÜNCELLENMİŞ AKILLI SIĞDIRMA ---
     void UpdateHitboxAndScale()
     {
         if (_currentData == null) return;
 
-        // 1. COLLIDER (HITBOX) AYARI
-        // Hitbox boyutunu ayarla.
         _col.offset = Vector2.zero;
         _col.size = hitboxSize;
 
-        // 2. AKILLI ÖLÇEK HESABI
         float s = _grid.cellSize;
-        
-        // Bloğun ham (orijinal) boyutu
         float currentWidth = _currentData.Width * s;
         float currentHeight = _currentData.Height * s;
         float maxContentDim = Mathf.Max(currentWidth, currentHeight);
 
-        // A) Manuel Limit: Inspector'da belirlediğin sınır (Örn: 2.5f)
         float limitSize = maxSlotDimension;
 
-        // B) Ekran Limiti: Ekranın genişliğine göre dinamik sınır (YENİ)
         if (Camera.main != null)
         {
-            // Ekranın dünya koordinatlarında genişliği
             float screenHeight = Camera.main.orthographicSize * 2;
             float screenWidth = screenHeight * Camera.main.aspect;
-            
-            // Ekranı 3 slot kabul edersek, her slota düşen güvenli pay (biraz da boşluk için 3.5'e böldük)
             float maxAllowedScreenSpace = screenWidth / 3.5f;
 
-            // Eğer manuel limit (maxSlotDimension) ekrana sığmayacak kadar büyükse,
-            // limiti ekran genişliğine göre daralt.
-            if (limitSize > maxAllowedScreenSpace)
-            {
-                limitSize = maxAllowedScreenSpace;
-            }
+            if (limitSize > maxAllowedScreenSpace) limitSize = maxAllowedScreenSpace;
             
-            // Dikey kontrol: Grid ile çakışmaması için dikey limiti de kısıtlayalım
-            // Slotların genelde ekranın alt %20'sinde olduğunu varsayarsak:
             float maxAllowedHeight = screenHeight * 0.15f; 
-            if (limitSize > maxAllowedHeight)
-            {
-                limitSize = maxAllowedHeight;
-            }
+            if (limitSize > maxAllowedHeight) limitSize = maxAllowedHeight;
         }
 
-        // Ölçekleme Çarpanını Hesapla
         float scaleFactor = 1.0f;
-        
-        // Eğer blok bu limitten büyükse, limite sığacak kadar küçült
-        if (maxContentDim > limitSize)
-        {
-            scaleFactor = limitSize / maxContentDim;
-        }
-        else
-        {
-            // Zaten küçükse (örn 1x1, 2x2), birazcık küçült ki şık dursun
-            scaleFactor = 0.75f; 
-        }
+        if (maxContentDim > limitSize) scaleFactor = limitSize / maxContentDim;
+        else scaleFactor = 0.75f; 
 
         _slotScale = Vector3.one * scaleFactor;
-        
-        // Hemen uygula
         transform.localScale = _slotScale;
     }
 
@@ -164,81 +131,91 @@ public class DraggableBlock : MonoBehaviour
         
         foreach (var cell in _spawnedCells) cell.OnDragging();
 
-        // Tıklayınca GERÇEK BOYUTUNA (1:1) Büyüt
+        // Tıklayınca Büyüt
         transform.DOKill();
         transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack);
         
-        // Diğer blokların üstünde görünsün diye sorting order arttırılabilir
-        // (VisualCell içinde sorting order yönetiliyorsa gerek yok)
+        // --- İPUCU HAYALETİ (OPSİYONEL) ---
+        // Eğer tıklayınca hemen Spawner'ın ipucunu (hedefi) da görmek istiyorsan bunu açabilirsin.
+        // Ama senin BlockGhost zaten sürüklerken çalışacak, o yüzden kapalı kalabilir.
+        /* if(BlockSpawner.Instance)
+            BlockSpawner.Instance.ShowGhost(_shapeData, _hintPosition);
+        */
     }
 
     void Update()
     {
         if (!_isDragging || _currentData == null) return;
 
-        // Mouse Takibi (Ofsetli)
+        // 1. Mouse Takibi
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouse.z = 0; 
-        // dragOffsetY ile parmağın yukarısına kaldırıyoruz
         transform.position = new Vector3(mouse.x, mouse.y, -5f) + new Vector3(0, dragOffsetY, 0);
 
-        // Ghost Hesaplama
-        float s = _grid.cellSize;
-        // Görseller ortalı olduğu için, bloğun sol alt köşesini (origin) bulurken yarım boyut kadar geri gidiyoruz
-        Vector3 centerOffset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
-        Vector3 origin = transform.position - centerOffset;
-        
-        // Grid snap düzeltmesi
-        Vector3 snapFix = new Vector3(s / 2f, s / 2f, 0);
-        Vector2Int cell = _grid.WorldToCell(origin + snapFix);
-        
-        bool canPlace = _grid.CanPlace(_currentData, cell.x, cell.y);
+        // 2. Anlık Konum Hesabı
+        Vector2Int currentGridPos = CalculateGridPosition();
 
+        // 3. Oraya Sığar mı?
+        bool canPlace = _grid.CanPlace(_currentData, currentGridPos.x, currentGridPos.y);
+
+        // --- BLOCK GHOST ENTEGRASYONU ---
         if (canPlace)
         {
-            // --- GHOST SPRITE GÖNDERME ---
+            // Bloğun üzerindeki resmi (Sprite) al
             Sprite mySprite = null;
+            // VisualCell prefabının içinde SpriteRenderer arıyoruz
             var firstRenderer = GetComponentInChildren<SpriteRenderer>();
             if (firstRenderer != null) mySprite = firstRenderer.sprite;
 
-            // Ghost'a Sprite'ı gönder
-            _ghost.Show(_currentData, cell, _grid, _myColor, mySprite);
+            // SENİN BLOCKGHOST SINIFINI ÇAĞIRIYORUZ
+            // Show(BlockData data, Vector2Int cell, GridManager grid, BlockColorType colorType, Sprite visualSprite)
+            _ghost.Show(_currentData, currentGridPos, _grid, _myColor, mySprite);
         }
-        else _ghost.Clear();
+        else
+        {
+            // Sığmıyorsa hayaleti gizle
+            _ghost.Clear();
+        }
 
-        // Bırakma İşlemi
+        // 4. Bırakma İşlemi
         if (Input.GetMouseButtonUp(0))
         {
             _isDragging = false;
-    
+            
+            // Hayaletleri temizle
+            _ghost.Clear();
+            if(BlockSpawner.Instance) BlockSpawner.Instance.HideGhost();
+
             if (canPlace)
             {
                 // BAŞARILI
                 foreach (var c in _spawnedCells) c.OnDrop();
 
-                _ghost.Clear();
-                BlockSpawner.Instance.OnBlockPlaced(this);
-
-                _grid.PlacePiece(_currentData, cell.x, cell.y, _myColor); 
+                // MÜHÜRLEME (Veriyi kaydet)
+                _grid.ConfirmPlacement(_shapeData, currentGridPos.x, currentGridPos.y, _myColor);
+                
+                if(BlockSpawner.Instance) BlockSpawner.Instance.OnBlockPlaced(this);
         
                 transform.DOKill(); 
                 Destroy(gameObject); 
             }
             else
             {
-                // BAŞARISIZ: Yuvaya Dönüş
-                foreach (var c in _spawnedCells)
-                {
-                    c.OnDrop(); 
-                    c.OnIdle(); 
-                }
-
-                _ghost.Clear();
+                // BAŞARISIZ
+                foreach (var c in _spawnedCells) { c.OnDrop(); c.OnIdle(); }
                 
-                // Eski yerine ve SLOT BOYUTUNA (_slotScale) dön
                 transform.DOMove(_startPosition, moveDuration).SetEase(Ease.OutBack);
                 transform.DOScale(_slotScale, moveDuration).SetEase(Ease.OutBack);
             }
         }
+    }
+
+    private Vector2Int CalculateGridPosition()
+    {
+        float s = _grid.cellSize;
+        Vector3 centerOffset = new Vector3((_currentData.Width * s) / 2f, (_currentData.Height * s) / 2f, 0);
+        Vector3 origin = transform.position - centerOffset;
+        Vector3 snapFix = new Vector3(s / 2f, s / 2f, 0);
+        return _grid.WorldToCell(origin + snapFix);
     }
 }
