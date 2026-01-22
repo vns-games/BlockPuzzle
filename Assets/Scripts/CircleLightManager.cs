@@ -16,7 +16,7 @@ public class CircleLightManager : MonoBehaviour
     [SerializeField] private Color incredibleColor = Color.cyan;
 
     [Header("Visual Settings")]
-    [SerializeField] private float minAlpha = 0.1f; 
+    [SerializeField] private float minAlpha = 0f; 
     [SerializeField] private float blinkDuration = 0.25f;
 
     private Status _status;
@@ -32,8 +32,10 @@ public class CircleLightManager : MonoBehaviour
     // GPU Instancing Değişkenleri
     private MaterialPropertyBlock _propBlock;
     
+    // Shader Property ID'leri
     private static readonly int GlowColorId = Shader.PropertyToID("_GlowColor");
     private static readonly int ShapeColorId = Shader.PropertyToID("_Shape2Color");
+    private static readonly int MainColorId = Shader.PropertyToID("_Color"); // Standart Shaderlar için
     
     private Color _currentBaseColor = Color.white; 
 
@@ -57,8 +59,8 @@ public class CircleLightManager : MonoBehaviour
     private void Start()
     {
         _currentBaseColor = Color.white;
-        _status = Status.Breathe;
         Breathe();
+        _status = Status.Breathe;
     }
 
     private void OnCombo(int remainingMoves)
@@ -80,7 +82,7 @@ public class CircleLightManager : MonoBehaviour
             if (_remainingMoves >= 3)
             {
                 ChangeBaseColor(Color.green);
-                isGreenMode = true; // Sadece yeşilde blink yapacağız
+                isGreenMode = true; 
             }
             else if (_remainingMoves == 2)
             {
@@ -93,12 +95,10 @@ public class CircleLightManager : MonoBehaviour
 
             if (isGreenMode)
             {
-                // Sadece YEŞİL ise ÇİFT BLINK yap, sonra Snake başlasın
                 PlayDoubleBlinkAndStartSnake();
             }
             else
             {
-                // Sarı veya Kırmızı ise direkt Snake başlasın
                 StartSnakeEffect();
             }
 
@@ -113,22 +113,19 @@ public class CircleLightManager : MonoBehaviour
         _status = Status.DoubleSnake;
     }
 
-    // --- EFEKTLER ---
+    // --- EFEKTLER (MANTIKLARI AYNI) ---
 
     private void PlayDoubleBlinkAndStartSnake()
     {
         KillActiveTweens(); 
-
-        // Blink hızını biraz artırdık (Daha seri çaksın)
         float fastBlinkDuration = blinkDuration * 0.7f;
 
-        // Parlaktan Sönüğe doğru blink
         blinkTween = DOVirtual.Float(1f, minAlpha, fastBlinkDuration, (value) => 
         {
             UpdateAllLightsAlpha(value);
         })
         .SetEase(Ease.OutQuad)
-        .SetLoops(2, LoopType.Restart) // 2 Kere Çak
+        .SetLoops(2, LoopType.Restart) 
         .OnComplete(() => 
         {
             blinkTween = null;
@@ -138,18 +135,11 @@ public class CircleLightManager : MonoBehaviour
 
     private void Breathe()
     {
-        // Zaten oynuyorsa tekrar başlatma
-        if (breatheTween != null && breatheTween.IsActive() && breatheTween.IsPlaying()) return;
+        if (_status == Status.Breathe) return;
 
         KillActiveTweens();
-        
-        // 1. Önce ışıkları tamamen "Söndür" (minAlpha seviyesine çek)
-        // Böylece efekt başladığında ışıklar sönük olur.
         UpdateAllLightsAlpha(0);
 
-        // 2. Animasyon Yönü Değiştirildi:
-        // Eskiden: 1f -> minAlpha (Parlaktan Sönüğe) idi.
-        // Şimdi: minAlpha -> 1f (Sönükten Parlaya) yaptık.
         breatheTween = DOVirtual.Float(minAlpha, 1f, 2f, (value) => 
         {
             UpdateAllLightsAlpha(value);
@@ -160,9 +150,9 @@ public class CircleLightManager : MonoBehaviour
 
     public void StartSnakeEffect()
     {
-        if (snakeTween != null) snakeTween.Kill();
-        if (breatheTween != null) breatheTween.Kill();
-        
+        snakeTween?.Kill();
+        breatheTween?.Kill();
+
         float startPos = _lastSnakeHeadPosition % lights.Count;
         float endPos = startPos + lights.Count;
 
@@ -186,18 +176,16 @@ public class CircleLightManager : MonoBehaviour
             });
     }
 
-    // --- IŞIK GÜNCELLEME MANTIKLARI ---
+    // --- IŞIK GÜNCELLEME (AYNI) ---
 
     private void UpdateSnakeLights(float headPosition)
     {
         _lastSnakeHeadPosition = headPosition;
         int headIndex = Mathf.FloorToInt(headPosition) % lights.Count;
 
-        // Reset
         for(int i = 0; i < lights.Count; i++) 
             SetLightColorWithAlpha(lights[i], minAlpha);
 
-        // Yılan
         for(int i = 0; i < snakeLength; i++)
         {
             int targetIndex = (headIndex - i + lights.Count) % lights.Count;
@@ -213,11 +201,9 @@ public class CircleLightManager : MonoBehaviour
         int headIndex1 = Mathf.FloorToInt(headPosition) % lights.Count;
         int headIndex2 = (headIndex1 + (lights.Count / 2)) % lights.Count;
 
-        // Reset
         for(int i = 0; i < lights.Count; i++) 
             SetLightColorWithAlpha(lights[i], minAlpha);
 
-        // Çift Yılan
         for(int i = 0; i < snakeLength; i++)
         {
             float alphaRatio = 1f - ((float)i / snakeLength);
@@ -231,7 +217,7 @@ public class CircleLightManager : MonoBehaviour
         }
     }
 
-    // --- YARDIMCI VE ÇEKİRDEK METOTLAR ---
+    // --- YARDIMCILAR ---
 
     void ChangeBaseColor(Color c)
     {
@@ -246,21 +232,50 @@ public class CircleLightManager : MonoBehaviour
         }
     }
 
+    // --- KRİTİK DEĞİŞİKLİK BURADA ---
     private void SetLightColorWithAlpha(CircleLight lightObj, float alpha)
     {
-        if (lightObj == null || lightObj.SpriteRenderer == null) return;
+        if (lightObj == null) return;
 
-        Renderer r = lightObj.SpriteRenderer;
+        // --- 1. SpriteRenderer1 (RENKLİ KISIM) ---
+        if (lightObj.SpriteRenderer1 != null)
+        {
+            // PropertyBlock'u al
+            lightObj.SpriteRenderer1.GetPropertyBlock(_propBlock);
 
-        r.GetPropertyBlock(_propBlock);
+            // MATEMATİK: Siyah'tan -> Hedef Renge geçiş yap.
+            // alpha 0 ise Siyah (0,0,0), alpha 1 ise _currentBaseColor döner.
+            Color finalColor = Color.Lerp(Color.black, _currentBaseColor, alpha);
 
-        Color finalColor = _currentBaseColor;
-        finalColor.a = alpha;
+            // ÖNEMLİ: Shader'ın "Alpha Cutoff" yapıp cismi tamamen yok etmemesi için
+            // Alpha kanalını 1 (Opak) tutuyoruz. Biz ışığı SİYAH yaparak söndürüyoruz.
+            finalColor.a = 1f; 
 
-        _propBlock.SetColor(GlowColorId, finalColor);
-        _propBlock.SetColor(ShapeColorId, finalColor);
+            // Değerleri Ata
+            //_propBlock.SetColor(GlowColorId, finalColor);
+            //_propBlock.SetColor(ShapeColorId, finalColor);
+            _propBlock.SetColor(MainColorId, finalColor); // Standart shaderlar için
 
-        r.SetPropertyBlock(_propBlock);
+            // Uygula
+            lightObj.SpriteRenderer1.SetPropertyBlock(_propBlock);
+        }
+
+        // --- 2. SpriteRenderer2 (BEYAZ KISIM - Eğer Kullanırsan) ---
+        // Şu an kapalı olsa bile mantığı aynı kuralım: Beyaz -> Siyah
+        if (lightObj.SpriteRenderer2 != null && lightObj.SpriteRenderer2.gameObject.activeSelf)
+        {
+            lightObj.SpriteRenderer2.GetPropertyBlock(_propBlock);
+
+            // Beyazdan siyaha geçiş
+            Color finalWhite = Color.Lerp(Color.black, Color.white, alpha);
+            finalWhite.a = 1f; // Alpha hep full, renk kararıyor
+
+            //_propBlock.SetColor(GlowColorId, finalWhite);
+            _propBlock.SetColor(ShapeColorId, finalWhite);
+            //_propBlock.SetColor(MainColorId, finalWhite);
+
+            lightObj.SpriteRenderer2.SetPropertyBlock(_propBlock);
+        }
     }
 
     private void KillActiveTweens()

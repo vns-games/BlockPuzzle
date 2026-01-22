@@ -5,9 +5,12 @@ using UnityEngine;
 
 public class CircleLight : MonoBehaviour
 {
+
     private void Awake()
     {
-        SpriteRenderer = GetComponent<SpriteRenderer>();
+        SpriteRenderer1 = GetComponent<SpriteRenderer>();
+        SpriteRenderer2 = GetComponentInChildren<SpriteRenderer>();
     }
-    public SpriteRenderer SpriteRenderer { get; private set; }
+    public SpriteRenderer SpriteRenderer1 { get; private set; }
+    public SpriteRenderer SpriteRenderer2 { get; private set; }
 }
