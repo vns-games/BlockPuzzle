@@ -73,7 +73,7 @@ public class ScoreManager : Singleton<ScoreManager>
     public void OnBlast(int clearedBlockCount, int clearedLinesCount, bool isFullClear)
     {
         // 1. KOMBO MANTIĞI
-        if (_movesSinceLastClear <= maxMovesForCombo)
+        if (_movesSinceLastClear < maxMovesForCombo)
             _comboAccumulator += clearedLinesCount;
         else
             _comboAccumulator = 0;
@@ -177,6 +177,7 @@ public class ScoreManager : Singleton<ScoreManager>
         // Belirtilen süre kadar bekle (0.4 saniye idealdir)
         yield return new WaitForSeconds(delay);
 
+        VocalParticle.Instance.PlayParticle(key);
         // Vokali çal
         Sound.Play(key);
     }

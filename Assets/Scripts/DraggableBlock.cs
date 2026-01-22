@@ -184,7 +184,7 @@ public class DraggableBlock : MonoBehaviour
             
             // Hayaletleri temizle
             _ghost.Clear();
-            if(BlockSpawner.Instance) BlockSpawner.Instance.HideGhost();
+            //if(BlockSpawner.Instance) BlockSpawner.Instance.HideGhost();
 
             if (canPlace)
             {

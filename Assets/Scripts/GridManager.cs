@@ -95,7 +95,6 @@ public partial class GridManager : Singleton<GridManager>
         }
 
         Debug.Log($"LEVEL TAMAM. {foundBlocks} blok yerleştirildi.");
-        DebugGridState();
     }
 
     // --- KRİTİK FONKSİYON: BLOĞU MÜHÜRLEME ---
@@ -131,8 +130,6 @@ public partial class GridManager : Singleton<GridManager>
         // Yerleştirme bitti, şimdi satır/sütun oluştu mu diye bak
         CheckMatchesAndScore(colorType);
         
-        // 3. LOG (Kontrol için)
-        DebugGridState();
     }
 
     // Match ve Skor işlemlerini buraya aldık
@@ -186,34 +183,14 @@ public partial class GridManager : Singleton<GridManager>
         return new Vector2Int(Mathf.FloorToInt(l.x / cellSize), Mathf.FloorToInt(l.y / cellSize));
     }
     public Vector3 CellToWorld(int x, int y) => transform.position + new Vector3((x + 0.5f) * cellSize, (y + 0.5f) * cellSize, 0);
-
-    public List<BlockShapeSO> GetHoleFillingShapes(List<BlockShapeSO> c, float t) => ShapeFinder.GetHoleFillers(LevelGrid, c, t);
-    public List<BlockShapeSO> GetGapFillingShapes(List<BlockShapeSO> c) => ShapeFinder.GetFits(LevelGrid, c);
+    
     public bool CanPlace(BlockData d, int x, int y) => LevelGrid.CanPlace(d, x, y);
     public bool CanFitAnywhere(BlockData d) => LevelGrid.CanFitAnywhere(d);
-    public float GetFillPercentage() => LevelGrid.GetFillPercentage();
 
     public void ShakeGrid(float strength)
     {
         visualRoot.DOKill(true);
         visualRoot.DOShakePosition(0.4f, strength, 20, 90, false, true);
     }
-
-    public void DebugGridState()
-    {
-        System.Text.StringBuilder sb = new System.Text.StringBuilder();
-        sb.AppendLine("<color=yellow>=== GRID DURUM RAPORU (X:Dolu, O:Boş) ===</color>");
-
-        for (int y = height - 1; y >= 0; y--)
-        {
-            sb.Append($"Y{y}: ");
-            for (int x = 0; x < width; x++)
-            {
-                if (LevelGrid.Cells[x, y]) sb.Append("<color=red>[X]</color> ");
-                else sb.Append("<color=green>[O]</color> ");
-            }
-            sb.AppendLine(); 
-        }
-        Debug.Log(sb.ToString());
-    }
+    
 }

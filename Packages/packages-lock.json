@@ -235,6 +235,15 @@
       "dependencies": {},
       "url": "https://npm.pkg.github.com/@vns-games"
     },
+    "com.vns.utility.objectselector": {
+      "version": "1.0.3",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.vns.utility.singleton": "1.0.3"
+      },
+      "url": "https://npm.pkg.github.com/@vns-games"
+    },
     "com.vns.utility.singleton": {
       "version": "1.0.3",
       "depth": 0,
