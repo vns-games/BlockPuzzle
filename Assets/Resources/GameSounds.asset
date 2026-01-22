@@ -53,10 +53,6 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 9a53aadfc678015429a7abb71184fd09, type: 3}
     volume: 1
     pitch: 1
-  - key: Combo11
-    clip: {fileID: 8300000, guid: b4a89a7bd58b0dd42a7122d54684118f, type: 3}
-    volume: 1
-    pitch: 1
   - key: Good
     clip: {fileID: 8300000, guid: 2212bd157dec21845881135292af8545, type: 3}
     volume: 1
@@ -75,5 +71,21 @@ MonoBehaviour:
     pitch: 1
   - key: Incredible
     clip: {fileID: 8300000, guid: 7fd6f6b582d49394b9347a03e774e1a9, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Blast1
+    clip: {fileID: 8300000, guid: 33183198c509e464bb9c979e91436dee, type: 3}
+    volume: 0.364
+    pitch: 1
+  - key: Blast2
+    clip: {fileID: 8300000, guid: 0a0b1daa746126e48a40ca9a04fe6028, type: 3}
+    volume: 0.369
+    pitch: 1
+  - key: Pick
+    clip: {fileID: 8300000, guid: d4b1bbcbf2f9f8049afff386a1ea6b7e, type: 3}
+    volume: 1
+    pitch: 1
+  - key: Drop
+    clip: {fileID: 8300000, guid: 7ee1e7e24e9b7b44fa86ce8c83a3805a, type: 3}
     volume: 1
     pitch: 1

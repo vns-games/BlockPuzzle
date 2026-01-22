@@ -24,23 +24,31 @@ public class BlockSpawner : Singleton<BlockSpawner>
 
     [Header("WarmUp Settings")]
     public Vector2Int warmUpRange = new Vector2Int(10, 20);
-    [Range(0, 100)] public int warmUpExtendChance = 30;
-    public int warmUpExtendAmount = 2;
+    public Vector2Int warmUpExtendChanceRange = new Vector2Int(20, 50); 
     
     [Header("Difficulty Progression (CHAOS)")]
-    // Oyun ilerledikçe bu değer 0'dan 1'e doğru artacak
-    [Range(0f, 1f)] public float currentChaos = 0f; 
+    [Range(0f, 3f)] public float currentChaos = 0f; 
+    public float maxChaosCap = 3.0f; 
+    public Vector2 chaosStepRange = new Vector2(0.02f, 0.05f); 
+    public int baseSelectionRange = 6; 
+    public int skipBestPerChaosPoint = 3;
+
+    [Header("Chaos Recovery (Luck)")]
+    [Range(0, 100)] public int chaosReduceChance = 25; // %25 ihtimalle kaos düşsün
     
-    // Her set spawn olduğunda kaos ne kadar artsın?
-    public float chaosIncreasePerSet = 0.02f; 
-    
-    // Kaos 1.0 olduğunda en iyi kaç aday arasından seçim yapılsın?
-    // (5 demek: En iyi puanlı parça yerine, en iyi 5 taneden rastgele birini ver demek)
-    public int maxChaosSelectionRange = 8; 
+    // YENİ: Düşüş miktarı da artık bir aralık! (Min, Max)
+    // Örn: (0.1, 0.4) arası rastgele bir miktar düşer.
+    public Vector2 chaosReduceAmountRange = new Vector2(0.1f, 0.4f); 
+
+    [Header("Threshold Settings")]
+    public float startFitThreshold = 0.40f;
+    public float minFitThreshold = 0.15f;
+    public float thresholdDecaySpeed = 0.005f;
 
     // --- STATE ---
     private int _remainingWarmUpMoves;
     private bool _isWarmUpActive = true;
+    private float _currentFitThreshold;
     
     // --- GHOST ---
     private BlockShapeSO _ghostShape;
@@ -51,7 +59,9 @@ public class BlockSpawner : Singleton<BlockSpawner>
     {
         _remainingWarmUpMoves = Random.Range(warmUpRange.x, warmUpRange.y);
         _isWarmUpActive = true;
-        currentChaos = 0f; // Zorluğu sıfırla
+        
+        currentChaos = 0f;
+        _currentFitThreshold = startFitThreshold;
 
         Debug.Log($"<color=yellow><b>[GAME START]</b></color> WarmUp: <b>{_remainingWarmUpMoves}</b> Hamle. Kaos: 0%");
         SpawnSet();
@@ -67,7 +77,6 @@ public class BlockSpawner : Singleton<BlockSpawner>
         if (GridManager.Instance == null) return;
         Grid grid = GridManager.Instance.LevelGrid;
         
-        // 1. ADAYLARI OLUŞTUR VE PUANLA (En iyiden en kötüye sıralı gelir)
         List<ScoredShape> candidates = GenerateAllCandidates(grid);
 
         if (candidates.Count == 0)
@@ -80,63 +89,70 @@ public class BlockSpawner : Singleton<BlockSpawner>
         List<ScoredShape> finalPicks = new List<ScoredShape>();
         HashSet<BlockShapeSO> usedShapes = new HashSet<BlockShapeSO>();
 
-        // 2. KAOS AYARI (SEÇİM ARALIĞINI BELİRLE)
-        // Eğer WarmUp ise range = 1 (Sadece en iyisi).
-        // Değilse Kaos'a göre range genişler (1 ile maxChaosSelectionRange arası).
-        int selectionRange = 1;
-        
+        // --- ZORLUK HESAPLAMALARI ---
+        int selectionPoolSize = 1;
+        int skipBestCount = 0;
+
         if (!_isWarmUpActive)
         {
-            // Kaos arttıkça seçim havuzu genişler.
-            // Örn: Kaos 0.5 ise ve Max 8 ise -> Range 4 olur. (İlk 4 adaydan biri seçilir)
-            selectionRange = Mathf.RoundToInt(Mathf.Lerp(1, maxChaosSelectionRange, currentChaos));
-            
-            // Havuz aday sayısını geçemez
-            if (selectionRange > candidates.Count) selectionRange = candidates.Count;
-            
-            // Her set spawn olduğunda zorluğu biraz artır (Max 1.0)
-            currentChaos = Mathf.Clamp01(currentChaos + chaosIncreasePerSet);
-            
-            Debug.Log($"<color=red>[DIFFICULTY]</color> Kaos: {currentChaos:F2} | Seçim Havuzu: İlk {selectionRange} aday");
+            // 1. KAOS ARTIŞI
+            float randomStep = Random.Range(chaosStepRange.x, chaosStepRange.y);
+            currentChaos = Mathf.Clamp(currentChaos + randomStep, 0f, maxChaosCap);
+
+            // 2. HAVUZ AYARLARI
+            float normalizedChaosForPool = Mathf.Clamp01(currentChaos); 
+            selectionPoolSize = Mathf.RoundToInt(Mathf.Lerp(1, baseSelectionRange, normalizedChaosForPool));
+
+            if (currentChaos > 1.0f)
+            {
+                float excessChaos = currentChaos - 1.0f;
+                skipBestCount = Mathf.FloorToInt(excessChaos * skipBestPerChaosPoint);
+            }
+
+            Debug.Log($"<color=red>[DIFFICULTY]</color> Kaos: <b>{currentChaos:F2}</b> | Havuz: {selectionPoolSize} | Yasaklı: {skipBestCount}");
+        }
+        else
+        {
+            selectionPoolSize = 1;
+            skipBestCount = 0;
         }
 
-        // 3. SEÇİM YAP
+        // --- SEÇİM ---
         for(int i=0; i<slots.Length; i++) 
         {
             ScoredShape pick = null;
+            int attempts = 15; 
             
-            // --- YENİ SEÇİM MANTIĞI ---
-            // Eskiden: candidates listesinde sırayla geziyorduk (0, 1, 2...).
-            // Şimdi: Belirlenen "Range" içinden RASTGELE birini deneyeceğiz.
-            
-            // Havuzdan (0 ile selectionRange arası) rastgele denemeler yap
-            // Sonsuz döngüye girmemek için max deneme sayısı koyuyoruz
-            int attempts = 10; 
             while(attempts > 0)
             {
-                int randomIndex = Random.Range(0, selectionRange);
-                // Listenin dışına taşma kontrolü (Range list boyundan büyükse diye)
-                if (randomIndex >= candidates.Count) randomIndex = 0; 
+                int minIndex = skipBestCount;
+                int maxIndex = skipBestCount + selectionPoolSize;
+
+                if (minIndex >= candidates.Count) minIndex = candidates.Count - 1;
+                if (maxIndex > candidates.Count) maxIndex = candidates.Count;
                 
+                if (minIndex >= maxIndex) { minIndex = candidates.Count - 1; maxIndex = candidates.Count; }
+
+                int randomIndex = Random.Range(minIndex, maxIndex);
                 var potentialCand = candidates[randomIndex];
                 
                 if (!usedShapes.Contains(potentialCand.Shape))
                 {
                     pick = potentialCand;
-                    break; // Bulduk!
+                    break; 
                 }
                 attempts--;
             }
 
-            // Eğer rastgele seçimle bulamadıysak (hepsi kullanılmışsa),
-            // Klasik yöntemle (sırayla) boşta kalanı bul
             if (pick == null)
             {
-                foreach(var cand in candidates) { if(!usedShapes.Contains(cand.Shape)) { pick = cand; break; } }
+                for (int k = skipBestCount; k < candidates.Count; k++)
+                {
+                    if (!usedShapes.Contains(candidates[k].Shape)) { pick = candidates[k]; break; }
+                }
             }
             
-            // Hiç çare kalmadıysa en iyisini ver
-            if (pick == null && candidates.Count > 0) pick = candidates[0];
+            if (pick == null && candidates.Count > 0) pick = candidates[candidates.Count - 1];
 
             if (pick != null)
             {
@@ -145,7 +161,6 @@ public class BlockSpawner : Singleton<BlockSpawner>
             }
         }
 
-        // 4. OLUŞTUR
         for(int i=0; i<finalPicks.Count; i++) 
         {
             var b = Instantiate(blockPrefab, slots[i].position, Quaternion.identity);
@@ -161,42 +176,69 @@ public class BlockSpawner : Singleton<BlockSpawner>
         if (_isWarmUpActive)
         {
             _remainingWarmUpMoves--;
-            if (_remainingWarmUpMoves <= 0) {
+            
+            if (_remainingWarmUpMoves <= 0) 
+            {
                 _isWarmUpActive = false;
-                Debug.Log($"<color=cyan><b>[WARM UP ENDED]</b></color> Kaos başlıyor...");
+                Debug.Log($"<color=cyan><b>[WARM UP ENDED]</b></color> Isınma bitti! Kaos başlıyor!");
             }
             else
             {
-                Debug.Log($"<color=orange>[WARM UP]</color> Kalan: {_remainingWarmUpMoves}");
+                Debug.Log($"<color=orange>[WARM UP]</color> Kalan: <b>{_remainingWarmUpMoves}</b>");
             }
         }
-        
+        else
+        {
+            if (_currentFitThreshold > minFitThreshold) _currentFitThreshold -= thresholdDecaySpeed;
+        }
+
         if (_activeBlocks.Count == 0) SpawnSet(); 
         else StartCoroutine(CheckOver()); 
     }
     
     public void OnLinesCleared(int linesCount) 
     { 
-        if (_isWarmUpActive && linesCount > 0)
+        if (linesCount <= 0) return;
+
+        // 1. DURUM: WARM UP UZATMA
+        if (_isWarmUpActive)
         {
-            if (Random.Range(0, 100) < warmUpExtendChance)
+            int currentChance = Random.Range(warmUpExtendChanceRange.x, warmUpExtendChanceRange.y);
+            if (Random.Range(0, 100) < currentChance)
             {
-                _remainingWarmUpMoves += warmUpExtendAmount;
-                Debug.Log($"<color=green>[LUCKY!]</color> WarmUp Uzadı (+{warmUpExtendAmount})");
+                int extension = Random.Range(1, 3);
+                _remainingWarmUpMoves += extension;
+                Debug.Log($"<color=green><b>[LUCKY!]</b></color> WarmUp Uzadı (+{extension})");
+            }
+        }
+        // 2. DURUM: KAOS AZALTMA (UMUT IŞIĞI - RANDOMIZED)
+        else
+        {
+            if (currentChaos > 0)
+            {
+                if (Random.Range(0, 100) < chaosReduceChance)
+                {
+                    // YENİ: Düşüş miktarı artık rastgele (Örn: 0.1 ile 0.4 arası)
+                    float reductionAmount = Random.Range(chaosReduceAmountRange.x, chaosReduceAmountRange.y);
+                    
+                    float oldChaos = currentChaos;
+                    currentChaos -= reductionAmount;
+                    if (currentChaos < 0) currentChaos = 0;
+
+                    Debug.Log($"<color=lime><b>[RECOVERY!]</b></color> Kaos Düştü (-{reductionAmount:F2}): {oldChaos:F2} -> <b>{currentChaos:F2}</b>");
+                }
             }
         }
     }
     
-    // ... (Geri kalan AnalyzeShape, CalculateStrictScore vb. kodları AYNI kalacak) ...
-    // ... Sadece üst tarafı değiştirdik ...
-    
+    // ... STANDART KODLAR ...
     private IEnumerator CheckOver() { yield return new WaitForEndOfFrame(); CheckGameOver(); }
     private void CheckGameOver() { if (_activeBlocks.Count == 0) return; foreach (var b in _activeBlocks) if (GridManager.Instance.CanFitAnywhere(b.GetData())) return; GameManager.Instance.TriggerGameOver(); }
     private class ScoredShape { public BlockShapeSO Shape; public int Score; public string Label; public int Mass; public Vector2Int TargetPos; }
     private struct ShapeAnalysis { public bool Fits; public Vector2Int BestPos; public int LinesCleared; public float FitScore; public int BlockMass; public bool ResultsInFullClear; public bool IsFlush; }
     private List<ScoredShape> GenerateAllCandidates(Grid grid) { List<ScoredShape> validCandidates = new List<ScoredShape>(); foreach (var shape in allShapes) { var analysis = AnalyzeShape(grid.Cells, grid.Width, grid.Height, shape); if (analysis.Fits) { string label; int score = CalculateStrictScore(analysis, out label); validCandidates.Add(new ScoredShape { Shape = shape, Score = score, Label = label, Mass = analysis.BlockMass, TargetPos = analysis.BestPos }); } } return validCandidates.OrderByDescending(x => x.Score).ThenByDescending(x => x.Mass).ToList(); }
     private ShapeAnalysis AnalyzeShape(bool[,] cells, int w, int h, BlockShapeSO shape) { ShapeAnalysis result = new ShapeAnalysis { Fits = false, LinesCleared = -1 }; BlockData data = new BlockData(GetRawMatrixFromSO(shape)); int mass = 0; foreach(var b in data.Matrix) if(b) mass++; result.BlockMass = mass; for (int x = 0; x < w; x++) { for (int y = 0; y < h; y++) { if (CanPlace(cells, w, h, data, x, y)) { if (!result.Fits) result.Fits = true; var simResult = SimulatePlacement(cells, w, h, data, x, y); int cleared = simResult.linesCleared; bool isFullClear = simResult.isFullClear; bool isFlush = CheckIfFlush(data, x, y, simResult.clearedRows, simResult.clearedCols); float fitScore = CalculateFitScore(cells, w, h, data, x, y); bool isBetter = false; if (isFullClear && !result.ResultsInFullClear) isBetter = true; else if (result.ResultsInFullClear) isBetter = false; else if (isFlush && cleared > 0 && !(result.IsFlush && result.LinesCleared > 0)) isBetter = true; else if (!(isFlush && cleared > 0) && (result.IsFlush && result.LinesCleared > 0)) isBetter = false; else if (isFlush && cleared > 0 && result.IsFlush && cleared > result.LinesCleared) isBetter = true; else if (fitScore > result.FitScore) isBetter = true; else if (Mathf.Abs(fitScore - result.FitScore) < 0.01f && cleared > result.LinesCleared) isBetter = true; if (isBetter) { result.BestPos = new Vector2Int(x, y); result.LinesCleared = cleared; result.FitScore = fitScore; result.ResultsInFullClear = isFullClear; result.IsFlush = isFlush; } } } } return result; }
-    private int CalculateStrictScore(ShapeAnalysis analysis, out string label) { if (analysis.ResultsInFullClear) { label = "INCREDIBLE"; return TIER_INCREDIBLE + (analysis.BlockMass * 100); } if (analysis.IsFlush && analysis.LinesCleared > 0) { label = "CLEAN KILL"; return TIER_CLEAN_KILL + (analysis.LinesCleared * 50000) + (analysis.BlockMass * 100); } if (analysis.FitScore >= 0.4f) { label = "PERFECT FIT"; return TIER_PERFECT_FIT + (int)(analysis.FitScore * 5000) + (analysis.BlockMass * 100); } if (analysis.LinesCleared > 0) { label = "MESSY KILL"; return TIER_MESSY_KILL + (analysis.LinesCleared * 2000) + (analysis.BlockMass * 100); } label = "Fit"; return TIER_FIT + (analysis.BlockMass * 1000) + (int)(analysis.FitScore * 500); }
+    private int CalculateStrictScore(ShapeAnalysis analysis, out string label) { if (analysis.ResultsInFullClear) { label = "INCREDIBLE"; return TIER_INCREDIBLE + (analysis.BlockMass * 100); } if (analysis.IsFlush && analysis.LinesCleared > 0) { label = "CLEAN KILL"; return TIER_CLEAN_KILL + (analysis.LinesCleared * 50000) + (analysis.BlockMass * 100); } if (analysis.FitScore >= _currentFitThreshold) { label = "PERFECT FIT"; return TIER_PERFECT_FIT + (int)(analysis.FitScore * 5000) + (analysis.BlockMass * 100); } if (analysis.LinesCleared > 0) { label = "MESSY KILL"; return TIER_MESSY_KILL + (analysis.LinesCleared * 2000) + (analysis.BlockMass * 100); } label = "Fit"; return TIER_FIT + (analysis.BlockMass * 1000) + (int)(analysis.FitScore * 500); }
     private bool CheckIfFlush(BlockData data, int px, int py, List<int> clearedRows, List<int> clearedCols) { if (clearedRows.Count == 0 && clearedCols.Count == 0) return false; for (int x = 0; x < data.Width; x++) { for (int y = 0; y < data.Height; y++) { if (!data.Matrix[x, y]) continue; if (!clearedRows.Contains(py + y) && !clearedCols.Contains(px + x)) return false; } } return true; }
     private (int linesCleared, bool isFullClear, List<int> clearedRows, List<int> clearedCols) SimulatePlacement(bool[,] originalCells, int w, int h, BlockData data, int px, int py) { bool[,] simGrid = (bool[,])originalCells.Clone(); for (int i = 0; i < data.Width; i++) for (int j = 0; j < data.Height; j++) if (data.Matrix[i, j]) simGrid[px + i, py + j] = true; List<int> r = new List<int>(); List<int> c = new List<int>(); for(int y=0; y<h; y++){ bool f=true; for(int x=0; x<w; x++) if(!simGrid[x,y]){f=false; break;} if(f) r.Add(y); } for(int x=0; x<w; x++){ bool f=true; for(int y=0; y<h; y++) if(!simGrid[x,y]){f=false; break;} if(f) c.Add(x); } foreach(int y in r) for(int x=0; x<w; x++) simGrid[x,y]=false; foreach(int x in c) for(int y=0; y<h; y++) simGrid[x,y]=false; bool empty = true; for(int x=0; x<w; x++) for(int y=0; y<h; y++) if(simGrid[x,y]) { empty=false; break; } return (r.Count + c.Count, empty, r, c); }
     private bool[,] GetRawMatrixFromSO(BlockShapeSO shape) { int w = shape.width; int h = shape.height; bool[,] mat = new bool[w, h]; for (int x = 0; x < w; x++) for (int y = 0; y < h; y++) mat[x, y] = shape.cells[y * w + x]; return mat; }

@@ -128,7 +128,7 @@ public class DraggableBlock : MonoBehaviour
     {
         if (_currentData == null) return;
         _isDragging = true;
-        
+        Sound.Play("Pick");
         foreach (var cell in _spawnedCells) cell.OnDragging();
 
         // Tıklayınca Büyüt
@@ -190,7 +190,7 @@ public class DraggableBlock : MonoBehaviour
             {
                 // BAŞARILI
                 foreach (var c in _spawnedCells) c.OnDrop();
-
+                Sound.Play("Drop");
                 // MÜHÜRLEME (Veriyi kaydet)
                 _grid.ConfirmPlacement(_shapeData, currentGridPos.x, currentGridPos.y, _myColor);
                 

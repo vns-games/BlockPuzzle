@@ -106,7 +106,11 @@ public class ScoreManager : Singleton<ScoreManager>
                 5 => "Excellent",
                 _ => "###"
             };
+
         }
+        
+        if (clearedLinesCount >= 2)
+            Sound.Play(clearedLinesCount == 2 ? "Blast1" : "Blast2");
 
         // Vokal varsa gecikmeli çal
         if (vocalKey != "")
@@ -163,7 +167,7 @@ public class ScoreManager : Singleton<ScoreManager>
     private void PlayComboSound(int multiplier)
     {
         // 10'dan büyükse 10'a sabitle
-        int soundIndex = Mathf.Clamp(multiplier, 1, 11);
+        int soundIndex = Mathf.Clamp(multiplier, 1, 10);
 
         // Key oluştur: "Combo1", "Combo2"...
         string key = $"Combo{soundIndex}";
