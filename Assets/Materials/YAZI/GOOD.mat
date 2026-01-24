@@ -19,8 +19,7 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 3000
-  stringTagMap:
-    RenderType: Transparent
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -119,7 +118,7 @@ Material:
     - _CameraFadingEnabled: 1
     - _CameraFarFadeDistance: 3
     - _CameraNearFadeDistance: 1
-    - _ColorGradingMidPoint: 0.5
+    - _ColorGradingMidPoint: 0.99
     - _ColorMask: 15
     - _ColorMode: 0
     - _ColorRampBlend: 1
@@ -154,7 +153,7 @@ Material:
     - _FadeScrollYSpeed: 0
     - _FadeTransition: 0.075
     - _FlipbookMode: 0
-    - _Glow: 0
+    - _Glow: 1.81
     - _GlowGlobal: 1
     - _HandDrawnAmount: 10
     - _HandDrawnSpeed: 5
@@ -259,14 +258,14 @@ Material:
     - _CameraFadeParams: {r: 1, g: 0.5, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _ColorAddSubDiff: {r: 0, g: 0, b: 0, a: 0}
-    - _ColorGradingDark: {r: 1, g: 1, b: 1, a: 1}
-    - _ColorGradingLight: {r: 1, g: 1, b: 1, a: 1}
-    - _ColorGradingMiddle: {r: 1, g: 1, b: 1, a: 1}
+    - _ColorGradingDark: {r: 0, g: 0.0791831, b: 1, a: 1}
+    - _ColorGradingLight: {r: 0, g: 0.0030123154, b: 0.6037736, a: 1}
+    - _ColorGradingMiddle: {r: 0, g: 0.013260463, b: 0.6037736, a: 1}
     - _DepthGlowColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _FadeBurnColor: {r: 1, g: 1, b: 0, a: 1}
     - _FrontFaceTint: {r: 1, g: 1, b: 1, a: 1}
-    - _GlowColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlowColor: {r: 1, g: 0.40922374, b: 0, a: 1}
     - _LightColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _Shape2Color: {r: 1, g: 1, b: 1, a: 1}
