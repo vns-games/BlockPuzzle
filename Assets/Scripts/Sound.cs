@@ -39,7 +39,7 @@ public static class Sound
                 _soundDict.Add(item.key, item);
             }
         }
-        
+
         Debug.Log("SES SİSTEMİ: Otomatik kuruldu ve hazır.");
     }
 
@@ -53,7 +53,7 @@ public static class Sound
         {
             // Pitch ve Volume ayarlarını yap
             _audioSource.pitch = item.pitch;
-            
+
             // Çal
             _audioSource.PlayOneShot(item.clip, item.volume);
         }
@@ -62,5 +62,16 @@ public static class Sound
             // Ses bulunamazsa konsolu kirletmesin, geliştirici görsün yeter
             // Debug.LogWarning($"Ses bulunamadı: {key}");
         }
+    }
+
+    public static void ToggleMute()
+    {
+        var mutePref = PlayerPrefs.GetInt("mute", 0);
+        int muteStatus = Mathf.Abs(mutePref - 1);
+        PlayerPrefs.SetInt("mute", muteStatus);
+
+        bool isMuted = muteStatus == 1;
+
+        _audioSource.mute = isMuted;
     }
 }

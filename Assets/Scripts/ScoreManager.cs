@@ -80,9 +80,12 @@ public class ScoreManager : Singleton<ScoreManager>
 
         _multiplier = (_comboAccumulator > 0) ? _comboAccumulator : 1;
 
+        _multiplier = Math.Clamp(_multiplier, 1, 99);
         // 2. COMBO SESİ (Gecikmesiz)
-        if (_multiplier >= 1) PlayComboSound(_multiplier);
-
+        if (_multiplier >= 1)
+        {
+            PlayComboSound(_multiplier);
+        }
 
         // --- 3. VOKAL SESİ SEÇİMİ (BURASI DEĞİŞTİ) ---
         string vocalKey = "";
@@ -108,7 +111,7 @@ public class ScoreManager : Singleton<ScoreManager>
             };
 
         }
-        
+
         if (clearedLinesCount >= 2)
             Sound.Play(clearedLinesCount == 2 ? "Blast1" : "Blast2");
 
@@ -162,6 +165,7 @@ public class ScoreManager : Singleton<ScoreManager>
             OnIncredible?.Invoke();
         }
     }
+    public int ComboAccumulator => _comboAccumulator;
     // ScoreManager.cs içindeki ilgili fonksiyon
 
     private void PlayComboSound(int multiplier)
