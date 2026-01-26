@@ -7,6 +7,10 @@ public class CircleLightManager : MonoBehaviour
 {
     [SerializeField] private List<CircleLight> lights;
 
+    [Header("Alpha Ayarları")]
+    [Range(0f, 1f)] public float sr1MaxAlpha = 0.5f; // SR1 (Renkli) en fazla %50 görünsün
+    [Range(0f, 1f)] public float sr2MaxAlpha = 1.0f; // SR2 (Beyaz) tamamen görünsün
+    
     [Header("Snake Settings")]
     [SerializeField] private int snakeLength = 5;
     [SerializeField] private float snakeDuration = 1f;
@@ -33,7 +37,6 @@ public class CircleLightManager : MonoBehaviour
     private MaterialPropertyBlock _propBlock;
     
     // Shader Property ID'leri
-    private static readonly int GlowColorId = Shader.PropertyToID("_GlowColor");
     private static readonly int ShapeColorId = Shader.PropertyToID("_Shape2Color");
     private static readonly int MainColorId = Shader.PropertyToID("_Color"); // Standart Shaderlar için
     // Diğer ID'lerin yanına ekle
@@ -88,7 +91,7 @@ public class CircleLightManager : MonoBehaviour
             }
             else if (_remainingMoves == 2)
             {
-                ChangeBaseColor(new Color(1, .8f, 0)); // Sarı
+                ChangeBaseColor(new Color(1, .6f, 0)); // Sarı
             }
             else
             {
@@ -142,7 +145,7 @@ public class CircleLightManager : MonoBehaviour
         KillActiveTweens();
         UpdateAllLightsAlpha(0);
 
-        breatheTween = DOVirtual.Float(minAlpha, .8f, 2f, (value) => 
+        breatheTween = DOVirtual.Float(minAlpha, 1, 2f, (value) => 
         {
             UpdateAllLightsAlpha(value);
         })
@@ -233,51 +236,60 @@ public class CircleLightManager : MonoBehaviour
             SetLightColorWithAlpha(l, alpha);
         }
     }
-
-    // --- KRİTİK DEĞİŞİKLİK BURADA ---
-    private void SetLightColorWithAlpha(CircleLight lightObj, float alpha)
+    
+private void UpdateOuterLight(CircleLight lightObj, float mainAlpha)
     {
-        if (lightObj == null) return;
+        if (lightObj == null || lightObj.SpriteRenderer1 == null) return;
 
-        // --- 1. SpriteRenderer1 (RENKLİ KISIM) ---
-        if (lightObj.SpriteRenderer1 != null)
-        {
-            // PropertyBlock'u al (veya temizle)
-            _propBlock.Clear(); // Garanti olsun diye temizleyelim
-            lightObj.SpriteRenderer1.GetPropertyBlock(_propBlock);
+        _propBlock.Clear();
+        lightObj.SpriteRenderer1.GetPropertyBlock(_propBlock);
 
-            // RENK: Artık karartma (Lerp) YOK. Direkt rengin kendisi.
-            Color baseColor = _currentBaseColor;
-        
-            // Not: Shader'ın _Alpha property'si ile çarpıyorsa 
-            // buradaki baseColor.a'nın 1 olması genelde daha iyidir.
-            baseColor.a = 1f; 
+        // RENK: Mevcut oyun rengi (Kırmızı, Yeşil vs.)
+        Color color = _currentBaseColor;
+        color.a = 1f; // Rengin kendisi tam opak
+        _propBlock.SetColor(MainColorId, color);
+        // Eğer shader'da başka renk kanalları varsa onları da set et:
+        // _propBlock.SetColor(GlowColorId, color);
 
-            // Rengi Ata (Senin kodunda MainColorId açıktı)
-            _propBlock.SetColor(MainColorId, baseColor);
+        // ALPHA: Gelen alpha * 0.5 (veya sr1MaxAlpha)
+        float finalAlpha = mainAlpha * sr1MaxAlpha;
+        _propBlock.SetFloat(AlphaId, finalAlpha);
 
-            // ALPHA: Özel property'ye float olarak basıyoruz
-            _propBlock.SetFloat(AlphaId, alpha);
-
-            // Uygula
-            lightObj.SpriteRenderer1.SetPropertyBlock(_propBlock);
-        }
-
-        // --- 2. SpriteRenderer2 (BEYAZ KISIM) ---
-        if (lightObj.SpriteRenderer2 != null && lightObj.SpriteRenderer2.gameObject.activeSelf)
-        {
-            _propBlock.Clear();
-            lightObj.SpriteRenderer2.GetPropertyBlock(_propBlock);
-
-            // RENK: Direkt Beyaz
-
-            // ALPHA: Aynı alpha değerini buna da basıyoruz
-            _propBlock.SetFloat(AlphaId, alpha);
-
-            lightObj.SpriteRenderer2.SetPropertyBlock(_propBlock);
-        }
+        lightObj.SpriteRenderer1.SetPropertyBlock(_propBlock);
     }
 
+    // 2. Sadece SR2 (Beyaz - İç Halka) ile ilgilenir
+    private void UpdateInnerLight(CircleLight lightObj, float mainAlpha)
+    {
+        // SR2 yoksa veya kapalıysa işlem yapma
+        if (lightObj == null || lightObj.SpriteRenderer2 == null || !lightObj.SpriteRenderer2.gameObject.activeSelf) return;
+
+        _propBlock.Clear();
+        lightObj.SpriteRenderer2.GetPropertyBlock(_propBlock);
+
+        // RENK: Daima Beyaz
+        Color whiteColor = Color.white;
+        whiteColor.a = 1f;
+        _propBlock.SetColor(ShapeColorId, whiteColor); // veya MainColorId, shaderına göre
+        // _propBlock.SetColor(MainColorId, whiteColor); 
+
+        // ALPHA: Gelen alpha * 1.0 (veya sr2MaxAlpha)
+        float finalAlpha = mainAlpha * sr2MaxAlpha;
+        _propBlock.SetFloat(AlphaId, finalAlpha);
+
+        lightObj.SpriteRenderer2.SetPropertyBlock(_propBlock);
+    }
+
+    // --- Snake Efektlerinde de bu ayrımı kullanmak için yardımcı ---
+    
+    // Snake/DoubleSnake fonksiyonlarında "SetLightColorWithAlpha" çağırdığın yerleri
+    // şununla güncellemen gerekecek (veya o metodu wrapper yapabilirsin):
+
+    private void SetLightColorWithAlpha(CircleLight lightObj, float alpha)
+    {
+        UpdateOuterLight(lightObj, alpha);
+        UpdateInnerLight(lightObj, alpha);
+    }
     private void KillActiveTweens()
     {
         if(breatheTween != null) breatheTween.Kill();
