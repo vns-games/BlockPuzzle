@@ -270,11 +270,6 @@ public class CircleLightManager : MonoBehaviour
             lightObj.SpriteRenderer2.GetPropertyBlock(_propBlock);
 
             // RENK: Direkt Beyaz
-            Color whiteColor = Color.white;
-            whiteColor.a = 1f;
-
-            // Rengi Ata (Senin kodunda ShapeColorId açıktı)
-            _propBlock.SetColor(ShapeColorId, whiteColor);
 
             // ALPHA: Aynı alpha değerini buna da basıyoruz
             _propBlock.SetFloat(AlphaId, alpha);

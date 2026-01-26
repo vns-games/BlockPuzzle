@@ -9,7 +9,7 @@ public class CircleLight : MonoBehaviour
     private void Awake()
     {
         SpriteRenderer1 = GetComponent<SpriteRenderer>();
-        SpriteRenderer2 = GetComponentInChildren<SpriteRenderer>();
+        SpriteRenderer2 = transform.GetChild(0).GetComponent<SpriteRenderer>();
     }
     public SpriteRenderer SpriteRenderer1 { get; private set; }
     public SpriteRenderer SpriteRenderer2 { get; private set; }
