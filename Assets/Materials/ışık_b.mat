@@ -72,7 +72,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape2Tex:
-        m_Texture: {fileID: 2800000, guid: 1b2970a114ab1614d99a18ce46d4f458, type: 3}
+        m_Texture: {fileID: 2800000, guid: e51c110afc99e884682449b2e7f16523, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Shape3DistortTex:
@@ -172,9 +172,9 @@ Material:
     - _ShakeUvX: 5
     - _ShakeUvY: 4
     - _Shape1MaskPow: 1
-    - _Shape2AlphaWeight: 1.15
+    - _Shape2AlphaWeight: 1
     - _Shape2Brightness: 0
-    - _Shape2ColorWeight: 1.15
+    - _Shape2ColorWeight: 1
     - _Shape2Contrast: 1
     - _Shape2DistortAmount: 0.5
     - _Shape2DistortXSpeed: 0.1
@@ -238,7 +238,7 @@ Material:
     - _GlowColor: {r: 0.12012029, g: 1, b: 0, a: 1}
     - _LightColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Shape2Color: {r: 0.0009765625, g: 0.0009765625, b: 0.0009765625, a: 1}
+    - _Shape2Color: {r: 1, g: 1, b: 1, a: 1}
     - _Shape3Color: {r: 1, g: 1, b: 1, a: 1}
     - _ShapeColor: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []

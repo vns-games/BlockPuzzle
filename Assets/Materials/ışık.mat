@@ -12,9 +12,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - ADDITIVECONFIG_ON
   - GLOWTEX_ON
-  - GLOW_ON
   - MASK_ON
   - SHAPE2_ON
   - SHAPEADD_ON
@@ -23,7 +21,8 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 3000
-  stringTagMap: {}
+  stringTagMap:
+    RenderType: Transparent
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -126,7 +125,7 @@ Material:
     - _DistortionPower: 10
     - _DistortionScrollXSpeed: 0
     - _DistortionScrollYSpeed: 0
-    - _DstMode: 1
+    - _DstMode: 10
     - _EditorDrawers: 62
     - _FadeAmount: -0.1
     - _FadeBurnGlow: 5
@@ -143,7 +142,7 @@ Material:
     - _HsvSaturation: 1
     - _HsvShift: 180
     - _LightAmount: 0
-    - _MaskPow: 0.34
+    - _MaskPow: 1
     - _OffsetSh1: 1
     - _OffsetSh2: 1
     - _OffsetSh3: 1
@@ -152,7 +151,7 @@ Material:
     - _RandomSh1Mult: 1
     - _RandomSh2Mult: 1
     - _RandomSh3Mult: 1
-    - _RenderingMode: 1
+    - _RenderingMode: 0
     - _RimAddAmount: 1
     - _RimBias: 0
     - _RimErodesAlpha: 0
@@ -174,9 +173,9 @@ Material:
     - _ShakeUvX: 5
     - _ShakeUvY: 4
     - _Shape1MaskPow: 1
-    - _Shape2AlphaWeight: 1.06
+    - _Shape2AlphaWeight: 1
     - _Shape2Brightness: 0
-    - _Shape2ColorWeight: 1.06
+    - _Shape2ColorWeight: 1
     - _Shape2Contrast: 1
     - _Shape2DistortAmount: 0.5
     - _Shape2DistortXSpeed: 0.1
@@ -208,7 +207,7 @@ Material:
     - _ShapeXSpeed: 0
     - _ShapeYSpeed: 0
     - _SoftFactor: 0.5
-    - _SrcMode: 1
+    - _SrcMode: 5
     - _TextureScrollXSpeed: 1
     - _TextureScrollYSpeed: 0
     - _TimingSeed: 0
@@ -227,7 +226,7 @@ Material:
     - _WaveX: 0
     - _WaveY: 0.5
     - _ZTestMode: 4
-    - _ZWrite: 0
+    - _ZWrite: 1
     m_Colors:
     - _BackFaceTint: {r: 0.5, g: 0.5, b: 0.5, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
@@ -240,7 +239,7 @@ Material:
     - _GlowColor: {r: 1, g: 1, b: 1, a: 1}
     - _LightColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Shape2Color: {r: 0.109803915, g: 1, b: 0, a: 1}
+    - _Shape2Color: {r: 0.016949654, g: 1, b: 0, a: 1}
     - _Shape3Color: {r: 1, g: 1, b: 1, a: 1}
     - _ShapeColor: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []
