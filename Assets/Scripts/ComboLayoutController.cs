@@ -50,7 +50,7 @@ public class ComboLayoutController : Singleton<ComboLayoutController>
         // 2. Ölçekleri ayarla, sprite'ları seç, hizala
         ResetScalesToTarget();
         SetupSprites(value);
-        AlignSprites();
+        AlignSprites(value);
 
         // 3. Partikül pozisyonunu bul (Artık yeni konuma göre hesaplayacak)
         Vector3 particleTargetPos = CalculateParticlePosition(value);
@@ -64,14 +64,29 @@ public class ComboLayoutController : Singleton<ComboLayoutController>
 
     private void SetupSprites(int value)
     {
+        // 1. Onlar Basamağı: 10 ve üzeri ise aç
         if (value >= 10)
         {
             tensDigitSprite.gameObject.SetActive(true);
             tensDigitSprite.sprite = numberSprites[value / 10];
         }
-        else tensDigitSprite.gameObject.SetActive(false);
-        onesDigitSprite.gameObject.SetActive(true);
-        onesDigitSprite.sprite = numberSprites[value % 10];
+        else
+        {
+            tensDigitSprite.gameObject.SetActive(false);
+        }
+
+        // 2. Birler Basamağı: DEĞİŞİKLİK BURADA
+        // Eğer değer 1'den büyükse göster, 1 ise GİZLE.
+        if (value > 1) 
+        {
+            onesDigitSprite.gameObject.SetActive(true);
+            onesDigitSprite.sprite = numberSprites[value % 10];
+        }
+        else 
+        {
+            // Sadece "Combo" yazısı kalsın istiyoruz
+            onesDigitSprite.gameObject.SetActive(false);
+        }
     }
     private void ResetScalesToTarget()
     {
@@ -79,42 +94,71 @@ public class ComboLayoutController : Singleton<ComboLayoutController>
         tensDigitSprite.transform.localScale = numberTargetScale;
         onesDigitSprite.transform.localScale = numberTargetScale;
     }
-    private void AlignSprites()
+    private void AlignSprites(int value)
     {
-        // 1. Genişlikleri al
+        // Combo yazısının genişliği her zaman var
         float comboW = comboTextSprite.bounds.size.x;
-        float onesW = onesDigitSprite.bounds.size.x;
-        float tensW = tensDigitSprite.gameObject.activeSelf ? tensDigitSprite.bounds.size.x : 0f;
-
-        // 2. Toplam Genişliği Hesapla
-        // Combo genişliği + Ana Boşluk + (Varsa Onlar Basamağı + Rakam Boşluğu) + Birler Basamağı
-        float totalWidth = comboW + mainSpacing + onesW;
         
-        if (tensDigitSprite.gameObject.activeSelf) 
+        // Rakamların genişliklerini varsayılan olarak 0 alalım
+        float onesEffectiveW = 0f;
+        float tensEffectiveW = 0f;
+
+        // EĞER AÇIKLARSA genişliklerini hesapla
+        if (onesDigitSprite.gameObject.activeSelf)
         {
-            totalWidth += tensW + digitSpacing; // Onlar basamağı varsa araya digitSpacing girer
+            float onesRealW = onesDigitSprite.bounds.size.x;
+            int onesDigit = value % 10;
+            // "1" rakamı inceltme mantığı (skinnyDigitMultiplier)
+            onesEffectiveW = (onesDigit == 1) ? onesRealW * .4f : onesRealW;
         }
 
-        // 3. Başlangıç X noktası (Ortalamak için en sola git)
-        float currentX = -(totalWidth / 2);
-
-        // --- A. COMBO YAZISI ---
-        comboTextSprite.transform.localPosition = new Vector3(currentX + (comboW / 2), 0, 0);
-        
-        // İmleci sağa kaydır (Yazı genişliği + Ana Boşluk)
-        currentX += comboW + mainSpacing;
-
-        // --- B. ONLAR BASAMAĞI (Varsa) ---
         if (tensDigitSprite.gameObject.activeSelf)
         {
-            tensDigitSprite.transform.localPosition = new Vector3(currentX + (tensW / 2), 0, 0);
-            
-            // İmleci sağa kaydır (Rakam genişliği + RAKAM BOŞLUĞU)
-            currentX += tensW + digitSpacing;
+            float tensRealW = tensDigitSprite.bounds.size.x;
+            int tensDigit = value / 10;
+            tensEffectiveW = (tensDigit == 1) ? tensRealW * .4f : tensRealW;
         }
 
-        // --- C. BİRLER BASAMAĞI ---
-        onesDigitSprite.transform.localPosition = new Vector3(currentX + (onesW / 2), 0, 0);
+        // --- TOPLAM GENİŞLİK HESABI ---
+        float totalWidth = comboW;
+
+        // Birler basamağı varsa boşluk ve genişliğini ekle
+        if (onesDigitSprite.gameObject.activeSelf)
+        {
+            totalWidth += mainSpacing + onesEffectiveW;
+        }
+
+        // Onlar basamağı varsa boşluk ve genişliğini ekle
+        if (tensDigitSprite.gameObject.activeSelf) 
+        {
+            // Onlar basamağı ile birler basamağı arasındaki boşluk
+            totalWidth += tensEffectiveW + digitSpacing;
+        }
+
+        // --- KONUMLANDIRMA ---
+        float currentX = -(totalWidth / 2);
+
+        // A. Combo Yazısı
+        comboTextSprite.transform.localPosition = new Vector3(currentX + (comboW / 2), 0, 0);
+        
+        // Sadece birler basamağı açıksa imleci ilerlet
+        if (onesDigitSprite.gameObject.activeSelf)
+        {
+            currentX += comboW + mainSpacing;
+        }
+
+        // B. Onlar Basamağı (Varsa)
+        if (tensDigitSprite.gameObject.activeSelf)
+        {
+            tensDigitSprite.transform.localPosition = new Vector3(currentX + (tensEffectiveW / 2), 0, 0);
+            currentX += tensEffectiveW + digitSpacing;
+        }
+
+        // C. Birler Basamağı (Varsa)
+        if (onesDigitSprite.gameObject.activeSelf)
+        {
+            onesDigitSprite.transform.localPosition = new Vector3(currentX + (onesEffectiveW / 2), 0, 0);
+        }
     }
     private Vector3 CalculateParticlePosition(int value)
     {
@@ -125,59 +169,58 @@ public class ComboLayoutController : Singleton<ComboLayoutController>
         return targetPos;
     }
 
-    private void PlayAnimation(Vector3 particlePos)
+   private void PlayAnimation(Vector3 particlePos)
     {
         currentSequence = DOTween.Sequence();
 
-        // --- 1. HAZIRLIK: HEPSİNİ SIFIRLA ---
+        // Hazırlık
         comboTextSprite.transform.localScale = Vector3.zero;
         tensDigitSprite.transform.localScale = Vector3.zero;
         onesDigitSprite.transform.localScale = Vector3.zero;
 
-        // --- 2. GİRİŞ ANİMASYONU ---
-        
-        // A) "Combo" Yazısı Büyüsün (Append = Sıraya Koy)
+        // 1. Combo Yazısı Gelsin
         currentSequence.Append(comboTextSprite.transform.DOScale(comboTargetScale, textDuration).SetEase(entryEase));
 
-        // B) Rakamlar Büyüsün
+        // 2. Rakamlar (SADECE AKTİFSE ANİMASYONA EKLE)
         if (tensDigitSprite.gameObject.activeSelf)
         {
-            // Onlar basamağı (Append = Yazıdan SONRA başla)
             currentSequence.Append(tensDigitSprite.transform.DOScale(numberTargetScale, numberDuration).SetEase(entryEase));
-
-            // Birler basamağı (Join = Onlar basamağıyla AYNI ANDA başla)
-            // İŞTE ÇÖZÜM BURASI: Artık OnStart yerine Join kullanıyoruz.
-            currentSequence.Join(onesDigitSprite.transform.DOScale(numberTargetScale, numberDuration).SetEase(entryEase));
+            // Onlar varsa birler de kesin vardır
+            if (onesDigitSprite.gameObject.activeSelf)
+                currentSequence.Join(onesDigitSprite.transform.DOScale(numberTargetScale, numberDuration).SetEase(entryEase));
         }
-        else
+        else if (onesDigitSprite.gameObject.activeSelf)
         {
-            // Sadece birler basamağı varsa (Append = Yazıdan SONRA başla)
+            // Sadece birler basamağı varsa
             currentSequence.Append(onesDigitSprite.transform.DOScale(numberTargetScale, numberDuration).SetEase(entryEase));
         }
 
-        // --- 3. PARTİKÜL TETİKLEME ---
-        // Animasyonun "textDuration" süresi dolduğunda (yani rakamlar başlarken) partikülü patlat.
-        currentSequence.InsertCallback(textDuration, () => {
+        // Partikül (Rakam yoksa direkt Combo yazısıyla patlasın)
+        float particleTime = onesDigitSprite.gameObject.activeSelf ? textDuration : 0.1f;
+        
+        currentSequence.InsertCallback(particleTime, () => {
             if (hitParticle != null)
             {
-                hitParticle.transform.position = particlePos;
+                // Rakam yoksa Combo yazısının üzerine patlasın
+                Vector3 finalParticlePos = onesDigitSprite.gameObject.activeSelf ? particlePos : comboTextSprite.transform.position;
+                finalParticlePos.z = particlePos.z; // Z derinliğini koru
+                
+                hitParticle.transform.position = finalParticlePos;
                 hitParticle.Stop();
                 hitParticle.Play();
             }
         });
 
-        // --- 4. BEKLEME SÜRESİ ---
+        // Bekleme ve Çıkış
         currentSequence.AppendInterval(stayDuration);
 
-        // --- 5. ÇIKIŞ ANİMASYONU (Yok Olma) ---
-        // Combo yazısını küçült
+        // Çıkış Animasyonu
         currentSequence.Append(comboTextSprite.transform.DOScale(0f, exitDuration).SetEase(exitEase));
         
-        // Rakamları da onunla BERABER küçült (Join)
         if (tensDigitSprite.gameObject.activeSelf)
-        {
             currentSequence.Join(tensDigitSprite.transform.DOScale(0f, exitDuration).SetEase(exitEase));
-        }
-        currentSequence.Join(onesDigitSprite.transform.DOScale(0f, exitDuration).SetEase(exitEase));
+            
+        if (onesDigitSprite.gameObject.activeSelf)
+            currentSequence.Join(onesDigitSprite.transform.DOScale(0f, exitDuration).SetEase(exitEase));
     }
 }

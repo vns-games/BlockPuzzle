@@ -113,7 +113,10 @@ public class ScoreManager : Singleton<ScoreManager>
         }
 
         if (clearedLinesCount >= 2)
+        {
             Sound.Play(clearedLinesCount == 2 ? "Blast1" : "Blast2");
+            VibrationManager.Trigger(clearedLinesCount,isFullClear);
+        }
 
         // Vokal varsa gecikmeli çal
         if (vocalKey != "")

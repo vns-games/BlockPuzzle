@@ -66,6 +66,8 @@ public static class Sound
 
     public static void ToggleMute()
     {
+        if (_audioSource == null) Initialize();
+        
         var mutePref = PlayerPrefs.GetInt("mute", 0);
         int muteStatus = Mathf.Abs(mutePref - 1);
         PlayerPrefs.SetInt("mute", muteStatus);

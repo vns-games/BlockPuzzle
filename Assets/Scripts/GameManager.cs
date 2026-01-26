@@ -13,7 +13,6 @@ public class GameManager : Singleton<GameManager>
 
     public void StartGame()
     {
-        Music.Play();
         _hasUsedRevive = false;
         Debug.Log("GAME MANAGER: Başlatma sekansı çalışıyor...");
         ScoreManager.Instance.Initialize();

@@ -36,6 +36,8 @@ public class CircleLightManager : MonoBehaviour
     private static readonly int GlowColorId = Shader.PropertyToID("_GlowColor");
     private static readonly int ShapeColorId = Shader.PropertyToID("_Shape2Color");
     private static readonly int MainColorId = Shader.PropertyToID("_Color"); // Standart Shaderlar için
+    // Diğer ID'lerin yanına ekle
+    private static readonly int AlphaId = Shader.PropertyToID("_Alpha");
     
     private Color _currentBaseColor = Color.white; 
 
@@ -240,39 +242,42 @@ public class CircleLightManager : MonoBehaviour
         // --- 1. SpriteRenderer1 (RENKLİ KISIM) ---
         if (lightObj.SpriteRenderer1 != null)
         {
-            // PropertyBlock'u al
+            // PropertyBlock'u al (veya temizle)
+            _propBlock.Clear(); // Garanti olsun diye temizleyelim
             lightObj.SpriteRenderer1.GetPropertyBlock(_propBlock);
 
-            // MATEMATİK: Siyah'tan -> Hedef Renge geçiş yap.
-            // alpha 0 ise Siyah (0,0,0), alpha 1 ise _currentBaseColor döner.
-            Color finalColor = Color.Lerp(Color.black, _currentBaseColor, alpha);
+            // RENK: Artık karartma (Lerp) YOK. Direkt rengin kendisi.
+            Color baseColor = _currentBaseColor;
+        
+            // Not: Shader'ın _Alpha property'si ile çarpıyorsa 
+            // buradaki baseColor.a'nın 1 olması genelde daha iyidir.
+            baseColor.a = 1f; 
 
-            // ÖNEMLİ: Shader'ın "Alpha Cutoff" yapıp cismi tamamen yok etmemesi için
-            // Alpha kanalını 1 (Opak) tutuyoruz. Biz ışığı SİYAH yaparak söndürüyoruz.
-            finalColor.a = 1f; 
+            // Rengi Ata (Senin kodunda MainColorId açıktı)
+            _propBlock.SetColor(MainColorId, baseColor);
 
-            // Değerleri Ata
-            //_propBlock.SetColor(GlowColorId, finalColor);
-            //_propBlock.SetColor(ShapeColorId, finalColor);
-            _propBlock.SetColor(MainColorId, finalColor); // Standart shaderlar için
+            // ALPHA: Özel property'ye float olarak basıyoruz
+            _propBlock.SetFloat(AlphaId, alpha);
 
             // Uygula
             lightObj.SpriteRenderer1.SetPropertyBlock(_propBlock);
         }
 
-        // --- 2. SpriteRenderer2 (BEYAZ KISIM - Eğer Kullanırsan) ---
-        // Şu an kapalı olsa bile mantığı aynı kuralım: Beyaz -> Siyah
+        // --- 2. SpriteRenderer2 (BEYAZ KISIM) ---
         if (lightObj.SpriteRenderer2 != null && lightObj.SpriteRenderer2.gameObject.activeSelf)
         {
+            _propBlock.Clear();
             lightObj.SpriteRenderer2.GetPropertyBlock(_propBlock);
 
-            // Beyazdan siyaha geçiş
-            Color finalWhite = Color.Lerp(Color.black, Color.white, alpha);
-            finalWhite.a = 1f; // Alpha hep full, renk kararıyor
+            // RENK: Direkt Beyaz
+            Color whiteColor = Color.white;
+            whiteColor.a = 1f;
 
-            //_propBlock.SetColor(GlowColorId, finalWhite);
-            _propBlock.SetColor(ShapeColorId, finalWhite);
-            //_propBlock.SetColor(MainColorId, finalWhite);
+            // Rengi Ata (Senin kodunda ShapeColorId açıktı)
+            _propBlock.SetColor(ShapeColorId, whiteColor);
+
+            // ALPHA: Aynı alpha değerini buna da basıyoruz
+            _propBlock.SetFloat(AlphaId, alpha);
 
             lightObj.SpriteRenderer2.SetPropertyBlock(_propBlock);
         }
