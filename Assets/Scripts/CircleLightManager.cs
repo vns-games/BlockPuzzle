@@ -142,7 +142,7 @@ public class CircleLightManager : MonoBehaviour
         KillActiveTweens();
         UpdateAllLightsAlpha(0);
 
-        breatheTween = DOVirtual.Float(minAlpha, 1f, 2f, (value) => 
+        breatheTween = DOVirtual.Float(minAlpha, .8f, 2f, (value) => 
         {
             UpdateAllLightsAlpha(value);
         })
