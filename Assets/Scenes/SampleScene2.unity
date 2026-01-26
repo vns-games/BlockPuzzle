@@ -3489,6 +3489,8 @@ MonoBehaviour:
   - {fileID: 2070103751}
   - {fileID: 996058315}
   - {fileID: 1336781628}
+  sr1MaxAlpha: 0.5
+  sr2MaxAlpha: 1
   snakeLength: 5
   snakeDuration: 2
   doubleSnakeDuration: 0.4
@@ -12293,7 +12295,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41c09c44d1594639b811e2406d7da442, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toggle: {fileID: 71728531}
 --- !u!1 &1369600628
 GameObject:
   m_ObjectHideFlags: 0
@@ -13544,7 +13545,7 @@ MonoBehaviour:
   particleZOffset: 1
   comboTargetScale: {x: 0.3, y: 0.3, z: 1}
   numberTargetScale: {x: 0.175, y: 0.175, z: 1}
-  mainSpacing: -0.25
+  mainSpacing: -0.1
   digitSpacing: -0.625
   visualOffset: {x: 0, y: 0, z: -2}
   numberSprites:
@@ -13554,7 +13555,6 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 0a54b499cdbee6543888c9965eb6d443, type: 3}
   - {fileID: 21300000, guid: ed463d76112d7e4408abfe88464e5782, type: 3}
   - {fileID: 21300000, guid: 2983a1b25a937964681e1521ff44d097, type: 3}
-  - {fileID: 21300000, guid: 70cf4a53577befb419dddc1cf7b66697, type: 3}
   - {fileID: 21300000, guid: 70cf4a53577befb419dddc1cf7b66697, type: 3}
   - {fileID: 21300000, guid: f9442c4a1f53d6a439c78b9fa64d87ac, type: 3}
   - {fileID: 21300000, guid: 9aa43daa4899dd34e88240870a2261c1, type: 3}

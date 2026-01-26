@@ -109,14 +109,14 @@ public class ComboLayoutController : Singleton<ComboLayoutController>
             float onesRealW = onesDigitSprite.bounds.size.x;
             int onesDigit = value % 10;
             // "1" rakamı inceltme mantığı (skinnyDigitMultiplier)
-            onesEffectiveW = (onesDigit == 1) ? onesRealW * .4f : onesRealW;
+            onesEffectiveW =  onesRealW;
         }
 
         if (tensDigitSprite.gameObject.activeSelf)
         {
             float tensRealW = tensDigitSprite.bounds.size.x;
             int tensDigit = value / 10;
-            tensEffectiveW = (tensDigit == 1) ? tensRealW * .4f : tensRealW;
+            tensEffectiveW =  tensRealW;
         }
 
         // --- TOPLAM GENİŞLİK HESABI ---
@@ -199,7 +199,7 @@ public class ComboLayoutController : Singleton<ComboLayoutController>
         float particleTime = onesDigitSprite.gameObject.activeSelf ? textDuration : 0.1f;
         
         currentSequence.InsertCallback(particleTime, () => {
-            if (hitParticle != null)
+            if (hitParticle != null && onesDigitSprite.gameObject.activeSelf)
             {
                 // Rakam yoksa Combo yazısının üzerine patlasın
                 Vector3 finalParticlePos = onesDigitSprite.gameObject.activeSelf ? particlePos : comboTextSprite.transform.position;

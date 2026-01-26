@@ -14,6 +14,7 @@ public class GameManager : Singleton<GameManager>
     public void StartGame()
     {
         _hasUsedRevive = false;
+        Music.Play();
         Debug.Log("GAME MANAGER: Başlatma sekansı çalışıyor...");
         ScoreManager.Instance.Initialize();
         // 2. SONRA GRİDİ OLUŞTUR (Havuzdan parça çekecek)

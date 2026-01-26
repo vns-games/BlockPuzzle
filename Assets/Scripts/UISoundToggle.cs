@@ -6,18 +6,15 @@ using UnityEngine.UI;
 
 public class UISoundToggle : MonoBehaviour
 {
-    [SerializeField] private Toggle toggle;
-    private void Awake()
-    {
-        toggle.onValueChanged.AddListener(ToggleMute);
-    }
+    [SerializeField] private UIToggleSprite sprite;
+    
     private void OnEnable()
     {
         bool isMuted = PlayerPrefs.GetInt("mute", 0) == 1;
-        toggle.isOn = !isMuted;
+        sprite.OnValueChanged(!isMuted);
     }
-    private void ToggleMute(bool b)
+    public void ToggleMute(bool b)
     {
-        Sound.ToggleMute();
+        Sound.Mute(!b);
     }
 }

@@ -40,6 +40,7 @@ public static class Sound
             }
         }
 
+        Mute(PlayerPrefs.GetInt("mute", 0) == 1);
         Debug.Log("SES SİSTEMİ: Otomatik kuruldu ve hazır.");
     }
 
@@ -64,16 +65,65 @@ public static class Sound
         }
     }
 
-    public static void ToggleMute()
+    public static void Mute(bool b)
     {
         if (_audioSource == null) Initialize();
+
+        PlayerPrefs.SetInt("mute", b ? 1 : 0);
+
+        _audioSource.mute = b;
+    }
+}
+
+public static class Music
+{
+    private static AudioSource _audioSource;
+    private static GameObject _soundGameObject;
+
+    // --- KURULUM (Otomatik Çalışır) ---
+    private static void Initialize()
+    {
+        if (_audioSource != null) return; // Zaten kuruluysa çık
+
+        // 1. GameObject Oluştur
+        _soundGameObject = new GameObject("--- MUSIC_SYSTEM_AUTO ---");
+        Object.DontDestroyOnLoad(_soundGameObject); // Sahne değişse de silinmesin
+
+        // 2. AudioSource Ekle
+        _audioSource = _soundGameObject.AddComponent<AudioSource>();
+        _audioSource.playOnAwake = false;
+
+        // 3. Ses Dosyasını Resources'tan Yükle
+        // Dosya adı "GameSounds" olmalı ve Resources klasöründe durmalı!
+        var clip = Resources.Load<AudioClip>("Music");
+
+        if (clip == null)
+        {
+            Debug.LogError("KRİTİK HATA: 'Resources/GameSounds' dosyası bulunamadı!");
+            return;
+        }
+
+        _audioSource.clip = clip;
         
-        var mutePref = PlayerPrefs.GetInt("mute", 0);
-        int muteStatus = Mathf.Abs(mutePref - 1);
-        PlayerPrefs.SetInt("mute", muteStatus);
+        Mute(PlayerPrefs.GetInt("mute_music", 0) == 1);
+    }
 
-        bool isMuted = muteStatus == 1;
+    // --- ÇALMA FONKSİYONU ---
+    public static void Play()
+    {
+        // Sistem kurulu değilse önce kur
+        if (_audioSource == null) Initialize();
+        if (_audioSource.isPlaying) return;
+        _audioSource.loop = true;
+        _audioSource.Play();
+    }
 
-        _audioSource.mute = isMuted;
+    public static void Mute(bool b)
+    {
+        if (_audioSource == null) Initialize();
+
+        PlayerPrefs.SetInt("mute_music", b ? 1 : 0);
+
+        _audioSource.mute = b;
     }
 }
