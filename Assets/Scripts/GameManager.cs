@@ -6,6 +6,12 @@ public class GameManager : Singleton<GameManager>
 {
     private bool _hasUsedRevive = false; // Bu oyun içinde dirilme hakkını kullandı mı?
     [SerializeField] private UnityEvent onNotUsedRevive, onGameOver;
+
+    protected override void Awake()
+    {
+        Application.targetFrameRate = 60;
+        base.Awake();
+    }
     void Start()
     {
         StartGame();

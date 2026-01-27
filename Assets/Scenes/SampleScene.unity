@@ -3282,14 +3282,14 @@ MonoBehaviour:
   - {fileID: 2022002553}
   - {fileID: 636831221}
   warmUpRange: {x: 10, y: 50}
-  warmUpExtendChanceRange: {x: 20, y: 50}
+  warmUpExtendChanceRange: {x: 10, y: 50}
   currentChaos: 0
-  maxChaosCap: 3
-  chaosStepRange: {x: 0.05, y: 0.1}
-  baseSelectionRange: 6
-  skipBestPerChaosPoint: 3
+  maxChaosCap: 4
+  chaosStepRange: {x: 0.1, y: 0.5}
+  baseSelectionRange: 12
+  skipBestPerChaosPoint: 4
   chaosReduceChance: 15
-  chaosReduceAmountRange: {x: 0.1, y: 0.4}
+  chaosReduceAmountRange: {x: 0.1, y: 0.2}
   startFitThreshold: 0.4
   minFitThreshold: 0.15
   thresholdDecaySpeed: 0.005
@@ -3561,7 +3561,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.98039216}
+  m_Color: {r: 0, g: 0, b: 0, a: 0.99607843}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -3976,7 +3976,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -4530,6 +4530,18 @@ MonoBehaviour:
       - m_Target: {fileID: 460049600}
         m_TargetAssemblyTypeName: UISoundToggle, Assembly-CSharp
         m_MethodName: OnValueChanged
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1091393333}
+        m_TargetAssemblyTypeName: UIVibrationToggle, Assembly-CSharp
+        m_MethodName: ToggleVibration
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -9595,6 +9607,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1091393332}
+  - component: {fileID: 1091393333}
   m_Layer: 5
   m_Name: Vibration
   m_TagString: Untagged
@@ -9624,6 +9637,19 @@ RectTransform:
   m_AnchoredPosition: {x: 338.9, y: -444.1875}
   m_SizeDelta: {x: 677.8, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1091393333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1091393331}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1192f1cff18de9442a836e41a901aeae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sprite: {fileID: 460049600}
 --- !u!1 &1096463000
 GameObject:
   m_ObjectHideFlags: 0
@@ -10283,7 +10309,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0

@@ -3,7 +3,11 @@ using UnityEngine;
 public static class VibrationManager
 {
     // Ayarlar (Static olduğu için her yerden direkt erişilebilir)
-    public static bool IsEnabled = true;
+    public static bool IsEnabled;
+    static VibrationManager()
+    {
+        IsEnabled = PlayerPrefs.GetInt("vibration_on", 1) == 1;
+    }
 
     /// <summary>
     /// Titreşimi tetikler.
@@ -32,7 +36,7 @@ public static class VibrationManager
             // Orta şiddet (50ms, 80 şiddet)
             Vibration.Vibrate(50, 80);
         }
-        
+
         // 1 satır için titreşim yok
     }
 
@@ -53,7 +57,7 @@ public static class VibrationManager
         // 2. Vuruş (Sert)
         Vibration.Vibrate(80, 255);
     }
-    
+
     // UI Toggle için
     public static void SetEnabled(bool state)
     {

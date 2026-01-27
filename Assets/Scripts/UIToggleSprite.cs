@@ -7,13 +7,21 @@ using UnityEngine.UI;
 public class UIToggleSprite : MonoBehaviour
 {
     private Image _spriteRenderer;
-    private void Awake()
+    private Image SpriteRenderer
     {
-        _spriteRenderer = GetComponent<Image>();
+        get
+        {
+            if (_spriteRenderer == null)
+            {
+                _spriteRenderer = GetComponent<Image>();
+            }
+            return _spriteRenderer;
+        }
     }
+
 
     public void OnValueChanged(bool b)
     {
-        _spriteRenderer.sprite = GameAssets.Atlas.GetSprite(b ? "on" : "off");
+        SpriteRenderer.sprite = GameAssets.Atlas.GetSprite(b ? "on" : "off");
     }
 }
