@@ -82,10 +82,10 @@ MonoBehaviour:
     volume: 0.369
     pitch: 1
   - key: Pick
-    clip: {fileID: 8300000, guid: d4b1bbcbf2f9f8049afff386a1ea6b7e, type: 3}
+    clip: {fileID: 8300000, guid: 4860b8784a3b5e74cb7c3b7066e1d207, type: 3}
     volume: 1
     pitch: 1
   - key: Drop
-    clip: {fileID: 8300000, guid: 7ee1e7e24e9b7b44fa86ce8c83a3805a, type: 3}
+    clip: {fileID: 8300000, guid: c1246254a3583f244a7ae1c823bd7feb, type: 3}
     volume: 1
     pitch: 1
